@@ -1,0 +1,12 @@
+# Python specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Project specific ignores
+.env
+*.log
+*.sqlite3
+.idea/
+.vscode/
