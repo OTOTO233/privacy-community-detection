@@ -118,6 +118,12 @@
 
 ```text
 privacy-community-detection/
+├── data/
+│   ├── raw/                      # 原始公开数据，如 AUCS 原始 mpx 文件
+│   ├── processed/                # 处理后的真实数据集边表
+│   └── generated/                # LFR / mLFR 等生成型数据缓存
+├── tools/                        # mLFR 相关第三方工具目录骨架与桥接位置
+├── scripts/                      # 数据转换和单独实验辅助脚本
 ├── src/
 │   ├── backend.py                # FastAPI 后端接口
 │   ├── data_processor.py         # 图数据读取与统计
@@ -135,6 +141,14 @@ privacy-community-detection/
 ├── requirements.txt              # 项目依赖
 └── README.md                     # 项目说明文档
 ```
+
+其中：
+
+- `data/raw/aucs.mpx` 已提交，可直接重新生成 AUCS 处理后文件；
+- `data/processed/aucs/` 已提交，可直接运行 AUCS 实验；
+- `scripts/convert_aucs.py` 用于重新转换 AUCS；
+- `scripts/run_aucs_experiment.py` 用于单独运行 AUCS；
+- `tools/` 当前提交的是目录骨架和说明文件，用于固定 mLFR 相关工具路径。
 
 ## 八、运行方式
 
