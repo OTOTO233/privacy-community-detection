@@ -4,6 +4,8 @@
 """
 
 import networkx as nx
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Dict, List, Optional
@@ -98,6 +100,8 @@ class Visualizer:
         if output_path:
             plt.savefig(output_path, dpi=300, bbox_inches='tight')
             print(f"图表已保存到: {output_path}")
+            plt.close(fig)
+            return
 
         plt.show()
 
@@ -151,6 +155,8 @@ class Visualizer:
         if output_path:
             plt.savefig(output_path, dpi=300, bbox_inches='tight')
             print(f"统计图表已保存到: {output_path}")
+            plt.close(fig)
+            return
 
         plt.show()
 
@@ -215,6 +221,8 @@ class Visualizer:
         if output_path:
             plt.savefig(output_path, dpi=300, bbox_inches='tight')
             print(f"图属性已保存到: {output_path}")
+            plt.close(fig)
+            return
 
         plt.show()
 

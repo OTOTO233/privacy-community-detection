@@ -26,6 +26,7 @@ venv/
 ENV/
 env/
 .venv
+.venv1/
 
 # IDE
 .vscode/
@@ -39,6 +40,7 @@ env/
 data/*.csv
 data/*.txt
 data/*.npy
+output/
 *.log
 logs/
 

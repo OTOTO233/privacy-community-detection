@@ -14,6 +14,22 @@ class DataProcessor:
     """数据处理器"""
 
     @staticmethod
+    def _normalize_node_id(value):
+        """尽量保留原始节点标签，只在明显是整数时转成 int。"""
+        if pd.isna(value):
+            raise ValueError("边列表中存在空节点标识")
+        if isinstance(value, (int, np.integer)):
+            return int(value)
+        if isinstance(value, float) and float(value).is_integer():
+            return int(value)
+        text = str(value).strip()
+        if not text:
+            raise ValueError("边列表中存在空节点标识")
+        if text.lstrip("-").isdigit():
+            return int(text)
+        return text
+
+    @staticmethod
     def read_edge_list(filepath: str, sep: str = '\t') -> nx.Graph:
         """
         从边列表文件读取图
@@ -34,8 +50,8 @@ class DataProcessor:
         G = nx.Graph()
 
         for _, row in df.iterrows():
-            source = int(row[0])
-            target = int(row[1])
+            source = DataProcessor._normalize_node_id(row[0])
+            target = DataProcessor._normalize_node_id(row[1])
             weight = float(row[2]) if df.shape[1] > 2 else 1.0
 
             G.add_edge(source, target, weight=weight)
@@ -54,7 +70,7 @@ class DataProcessor:
             NetworkX 图对象
         """
         # 读取矩阵
-        adj_matrix = pd.read_csv(filepath, sep='\s+', header=None).values
+        adj_matrix = pd.read_csv(filepath, sep=r'\s+', header=None).values
 
         # 创建图
         G = nx.Graph()

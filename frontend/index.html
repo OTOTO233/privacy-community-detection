@@ -7,569 +7,667 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: linear-gradient(135deg, #efe9da 0%, #dce8f2 55%, #c8d7c8 100%);
+            --panel: rgba(255, 255, 255, 0.88);
+            --panel-strong: #ffffff;
+            --line: rgba(33, 53, 71, 0.12);
+            --text: #213547;
+            --muted: #5d7083;
+            --primary: #195c65;
+            --primary-dark: #12464d;
+            --accent: #d8864b;
+            --success-bg: #e7f3ed;
+            --success-text: #1c6a41;
+            --error-bg: #fde9e6;
+            --error-text: #9a2f25;
+            --shadow: 0 18px 45px rgba(34, 51, 70, 0.12);
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 24px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
         }
-
-        #app {
-            max-width: 1200px;
-            margin: 0 auto;
+        #app { max-width: 1320px; margin: 0 auto; }
+        .hero {
+            padding: 30px 34px;
+            border-radius: 24px;
+            background: linear-gradient(130deg, rgba(255,255,255,0.92), rgba(245,249,251,0.86));
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            margin-bottom: 24px;
         }
-
-        .header {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            text-align: center;
-        }
-
-        .header h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .card h2 {
-            color: #333;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        .upload-area {
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #f8f9ff;
-        }
-
-        .upload-area:hover {
-            background: #f0f2ff;
-            border-color: #764ba2;
-        }
-
-        .upload-area input[type="file"] {
-            display: none;
-        }
-
-        .upload-icon {
-            font-size: 3em;
-            margin-bottom: 10px;
-        }
-
-        .params {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .param-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        label {
-            color: #333;
+        .hero h1 { font-size: 2.5rem; letter-spacing: 0.02em; margin-bottom: 8px; }
+        .hero p { color: var(--muted); line-height: 1.75; max-width: 900px; }
+        .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .badge {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(25, 92, 101, 0.1);
+            color: var(--primary);
+            font-size: 0.92rem;
             font-weight: 600;
-            margin-bottom: 8px;
         }
-
-        input[type="number"],
-        input[type="text"],
-        select {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
-            transition: border 0.3s;
+        .layout { display: grid; grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); gap: 24px; }
+        .panel {
+            border-radius: 24px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            padding: 24px;
         }
-
-        input[type="number"]:focus,
-        input[type="text"]:focus,
-        select:focus {
+        .panel h2 { font-size: 1.2rem; margin-bottom: 16px; }
+        .section + .section { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line); }
+        .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+        .field label { font-size: 0.94rem; font-weight: 600; }
+        .field input, .field select {
+            width: 100%;
+            min-height: 42px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.92);
+            padding: 10px 12px;
+            color: var(--text);
+            font-size: 0.96rem;
+        }
+        .field input:focus, .field select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+            border-color: rgba(25, 92, 101, 0.45);
+            box-shadow: 0 0 0 4px rgba(25, 92, 101, 0.08);
         }
-
-        .slider-container {
-            display: flex;
+        .radio-row, .checkbox-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .radio-chip, .info-chip {
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.8);
         }
-
-        input[type="range"] {
-            flex: 1;
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .muted { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+        .upload-box {
+            border: 1.5px dashed rgba(25, 92, 101, 0.35);
+            border-radius: 18px;
+            background: rgba(25, 92, 101, 0.04);
+            padding: 18px;
         }
-
-        .range-value {
-            background: #667eea;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            min-width: 50px;
-            text-align: center;
-        }
-
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
+        .upload-box input[type="file"] { padding: 0; border: none; background: transparent; }
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
         button {
-            padding: 12px 20px;
+            min-height: 46px;
             border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            font-weight: 600;
+            border-radius: 14px;
+            padding: 0 16px;
+            font-size: 0.96rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
         }
-
+        button:hover:not(:disabled) { transform: translateY(-1px); }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
         .btn-primary {
-            background: #667eea;
             color: white;
+            background: linear-gradient(135deg, var(--primary), #2b7b85);
+            box-shadow: 0 12px 24px rgba(25, 92, 101, 0.22);
         }
-
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
         .btn-secondary {
-            background: #764ba2;
             color: white;
+            background: linear-gradient(135deg, var(--accent), #c66e3b);
+            box-shadow: 0 12px 24px rgba(216, 134, 75, 0.22);
         }
-
-        .btn-secondary:hover {
-            background: #654a8f;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
-        }
-
-        .btn-disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .results {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-        }
-
-        .results h2 {
-            color: #333;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .message { margin-top: 14px; padding: 14px 16px; border-radius: 14px; line-height: 1.6; }
+        .message.error { background: var(--error-bg); color: var(--error-text); }
+        .message.success { background: var(--success-bg); color: var(--success-text); }
+        .stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+        .stat-card {
+            background: linear-gradient(150deg, #194e57, #2c7580);
             color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
+            border-radius: 18px;
+            padding: 18px;
+            min-height: 112px;
         }
-
-        .stat-box .label {
-            font-size: 0.9em;
-            opacity: 0.9;
-            margin-bottom: 5px;
+        .stat-card .label { opacity: 0.82; font-size: 0.9rem; margin-bottom: 8px; }
+        .stat-card .value { font-size: 1.75rem; font-weight: 700; }
+        .summary-box {
+            margin-top: 18px;
+            padding: 18px;
+            border-radius: 18px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
         }
-
-        .stat-box .value {
-            font-size: 1.8em;
-            font-weight: bold;
+        .summary-box p { line-height: 1.75; }
+        .table-wrap {
+            margin-top: 18px;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.82);
         }
-
-        .visualization {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .visualization img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .loading {
-            text-align: center;
-            color: #667eea;
-            font-weight: 600;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 10px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .file-info {
-            background: #f8f9ff;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-            border-left: 4px solid #667eea;
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-            border-left: 4px solid #c62828;
-        }
-
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-            border-left: 4px solid #2e7d32;
-        }
-
-        .checkbox-group {
+        table { width: 100%; border-collapse: collapse; min-width: 680px; }
+        th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); font-size: 0.94rem; }
+        th { background: rgba(25, 92, 101, 0.06); color: var(--primary); }
+        tr:last-child td { border-bottom: none; }
+        .viz-box {
+            margin-top: 18px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.82);
+            min-height: 280px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin: 15px 0;
+            justify-content: center;
         }
-
-        input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
+        .viz-box img { display: block; width: 100%; height: auto; }
+        .inline-note { margin-top: 8px; color: var(--muted); font-size: 0.88rem; }
+        .layer-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 4px solid rgba(25, 92, 101, 0.12);
+            border-top-color: var(--primary);
+            animation: spin 0.9s linear infinite;
         }
-
-        .footer {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            color: #666;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 1080px) {
+            .layout { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-
-        @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .button-group {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 720px) {
+            body { padding: 14px; }
+            .hero, .panel { padding: 18px; border-radius: 18px; }
+            .grid-2, .actions, .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="header">
-            <h1>🔐 隐私保护社区检测系统</h1>
-            <p>Privacy-Preserving Community Detection System</p>
+<div id="app">
+    <section class="hero">
+        <h1>隐私保护的多层网络社区检测系统</h1>
+        <p>
+            页面版实验入口已经和命令行能力对齐，支持内置真实数据集、LFR / mLFR 基准网络、BioGRID 物种网络以及自定义上传图文件，
+            并可直接查看算法指标、层信息和可视化结果。
+        </p>
+        <div class="hero-badges">
+            <span class="badge">FastAPI</span>
+            <span class="badge">Vue 3</span>
+            <span class="badge">DH-Louvain</span>
+            <span class="badge">Differential Privacy</span>
+            <span class="badge">Homomorphic Encryption</span>
         </div>
+    </section>
 
-        <div class="container">
-            <!-- 左侧：上传和参数 -->
-            <div class="card">
-                <h2>📤 上传数据集</h2>
+    <div class="layout">
+        <section class="panel">
+            <h2>实验配置</h2>
 
-                <div class="upload-area" @click="$refs.fileInput.click()">
-                    <div class="upload-icon">📁</div>
-                    <p>点击选择文件或拖拽上传</p>
-                    <p style="font-size: 0.9em; color: #999; margin-top: 10px;">
-                        支持格式: .txt, .csv, .npy
-                    </p>
-                    <input type="file" ref="fileInput" @change="onFileSelect" accept=".txt,.csv,.npy">
+            <div class="section">
+                <div class="field">
+                    <label>数据源</label>
+                    <div class="radio-row">
+                        <label class="radio-chip">
+                            <input type="radio" value="builtin" v-model="form.source_type">
+                            <span>内置数据集</span>
+                        </label>
+                        <label class="radio-chip">
+                            <input type="radio" value="upload" v-model="form.source_type">
+                            <span>上传文件</span>
+                        </label>
+                    </div>
                 </div>
 
-                <div v-if="uploadedFile" class="file-info">
-                    <strong>已选择文件:</strong> {{ uploadedFile.name }}
-                    <br>
-                    <small>大小: {{ (uploadedFile.size / 1024).toFixed(2) }} KB</small>
-                </div>
-
-                <h2 style="margin-top: 30px;">⚙️ 检测参数</h2>
-
-                <div class="params">
-                    <div class="param-group">
-                        <label for="epsilon">隐私预算 (ε)</label>
-                        <div class="slider-container">
-                            <input type="range" id="epsilon" v-model="params.epsilon"
-                                   min="0.1" max="10" step="0.1">
-                            <span class="range-value">{{ params.epsilon }}</span>
-                        </div>
-                    </div>
-
-                    <div class="param-group">
-                        <label for="delta">失败概率 (δ)</label>
-                        <input type="number" id="delta" v-model.number="params.delta"
-                               min="1e-6" max="0.1" step="1e-5">
-                    </div>
-
-                    <div class="param-group">
-                        <label for="layout">布局方式</label>
-                        <select v-model="params.layout">
-                            <option value="spring">Spring 布局</option>
-                            <option value="circular">圆形布局</option>
-                            <option value="kamada_kawai">Kamada-Kawai 布局</option>
+                <div v-if="form.source_type === 'builtin'">
+                    <div class="field">
+                        <label>数据集</label>
+                        <select v-model="form.dataset_name">
+                            <option v-for="dataset in builtinDatasets" :key="dataset.id" :value="dataset.id">
+                                {{ dataset.label }}
+                            </option>
                         </select>
                     </div>
 
-                    <div class="param-group">
-                        <label for="randomState">随机种子</label>
-                        <input type="number" id="randomState" v-model.number="params.random_state">
-                    </div>
-                </div>
-
-                <div class="checkbox-group">
-                    <input type="checkbox" id="useEncryption" v-model="params.use_encryption">
-                    <label for="useEncryption">使用同态加密</label>
-                </div>
-
-                <div class="button-group">
-                    <button class="btn-primary" @click="detectCommunities"
-                            :class="{ 'btn-disabled': !uploadedFile || detecting }">
-                        {{ detecting ? '检测中...' : '🚀 开始检测' }}
-                    </button>
-                    <button class="btn-secondary" @click="visualizeResults"
-                            :class="{ 'btn-disabled': !detectionResults || visualizing }">
-                        {{ visualizing ? '生成中...' : '🎨 生成图像' }}
-                    </button>
-                </div>
-
-                <div v-if="error" class="error">
-                    ❌ {{ error }}
-                </div>
-
-                <div v-if="success" class="success">
-                    ✅ {{ success }}
-                </div>
-            </div>
-
-            <!-- 右侧：检测结果 -->
-            <div class="card">
-                <h2>📊 检测结果</h2>
-
-                <div v-if="detecting" class="loading">
-                    <div class="spinner"></div>
-                    正在检测社区...
-                </div>
-
-                <div v-else-if="detectionResults" class="results" style="background: transparent; box-shadow: none; padding: 0;">
-                    <div class="stats-grid">
-                        <div class="stat-box">
-                            <div class="label">社区数量</div>
-                            <div class="value">{{ detectionResults.statistics.num_communities }}</div>
+                    <div v-if="form.dataset_name === 'lfr'">
+                        <div class="field">
+                            <label>LFR 参数模式</label>
+                            <div class="radio-row">
+                                <label class="radio-chip">
+                                    <input type="radio" :value="false" v-model="form.lfr_custom_enabled">
+                                    <span>预设参数</span>
+                                </label>
+                                <label class="radio-chip">
+                                    <input type="radio" :value="true" v-model="form.lfr_custom_enabled">
+                                    <span>手填参数</span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="stat-box">
-                            <div class="label">模块度</div>
-                            <div class="value">{{ detectionResults.statistics.modularity.toFixed(4) }}</div>
+
+                        <div v-if="!form.lfr_custom_enabled" class="field">
+                            <label>LFR 预设</label>
+                            <select v-model="form.lfr_preset">
+                                <option v-for="preset in catalog.lfr_presets" :key="preset.id" :value="preset.id">
+                                    {{ preset.label }}
+                                </option>
+                            </select>
                         </div>
-                        <div class="stat-box">
-                            <div class="label">平均社区大小</div>
-                            <div class="value">{{ detectionResults.statistics.avg_community_size.toFixed(2) }}</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="label">图密度</div>
-                            <div class="value">{{ detectionResults.graph_info.density.toFixed(4) }}</div>
+
+                        <div v-else class="grid-2">
+                            <div class="field"><label>n</label><input type="number" v-model.number="form.lfr_n"></div>
+                            <div class="field"><label>tau1</label><input type="number" step="0.1" v-model.number="form.lfr_tau1"></div>
+                            <div class="field"><label>tau2</label><input type="number" step="0.1" v-model.number="form.lfr_tau2"></div>
+                            <div class="field"><label>mu</label><input type="number" step="0.01" min="0" max="1" v-model.number="form.lfr_mu"></div>
+                            <div class="field"><label>average_degree</label><input type="number" v-model.number="form.lfr_average_degree"></div>
+                            <div class="field"><label>min_community</label><input type="number" v-model.number="form.lfr_min_community"></div>
+                            <div class="field"><label>max_community</label><input type="number" v-model.number="form.lfr_max_community"></div>
+                            <div class="field"><label>max_iters</label><input type="number" v-model.number="form.lfr_max_iters"></div>
                         </div>
                     </div>
 
-                    <div class="file-info">
-                        <strong>图信息:</strong>
-                        <br>
-                        节点数: {{ detectionResults.graph_info.num_nodes }}
-                        <br>
-                        边数: {{ detectionResults.graph_info.num_edges }}
-                        <br>
-                        平均度数: {{ detectionResults.graph_info.avg_degree.toFixed(2) }}
+                    <div v-if="form.dataset_name === 'mlfr'" class="grid-2">
+                        <div class="field"><label>network_type</label><input type="text" v-model="form.mlfr_network_type"></div>
+                        <div class="field"><label>n</label><input type="number" v-model.number="form.mlfr_n"></div>
+                        <div class="field"><label>avg</label><input type="number" step="0.1" v-model.number="form.mlfr_avg"></div>
+                        <div class="field"><label>max</label><input type="number" v-model.number="form.mlfr_max"></div>
+                        <div class="field"><label>mix</label><input type="number" step="0.01" min="0" max="1" v-model.number="form.mlfr_mix"></div>
+                        <div class="field"><label>tau1</label><input type="number" step="0.1" v-model.number="form.mlfr_tau1"></div>
+                        <div class="field"><label>tau2</label><input type="number" step="0.1" v-model.number="form.mlfr_tau2"></div>
+                        <div class="field"><label>mincom</label><input type="number" v-model.number="form.mlfr_mincom"></div>
+                        <div class="field"><label>maxcom</label><input type="number" v-model.number="form.mlfr_maxcom"></div>
+                        <div class="field"><label>l</label><input type="number" v-model.number="form.mlfr_l"></div>
+                        <div class="field"><label>dc</label><input type="number" step="0.01" min="0" max="1" v-model.number="form.mlfr_dc"></div>
+                        <div class="field"><label>rc</label><input type="number" step="0.01" min="0" max="1" v-model.number="form.mlfr_rc"></div>
+                        <div class="field"><label>mparam1</label><input type="number" step="0.1" v-model.number="form.mlfr_mparam1"></div>
+                        <div class="field"><label>on</label><input type="number" v-model.number="form.mlfr_on"></div>
+                        <div class="field"><label>om</label><input type="number" v-model.number="form.mlfr_om"></div>
+                    </div>
+
+                    <div v-if="form.dataset_name === 'biogrid'">
+                        <div class="field">
+                            <label>BioGRID 物种</label>
+                            <select v-model="form.biogrid_member">
+                                <option v-for="species in catalog.biogrid_species" :key="species.member" :value="species.member">
+                                    {{ species.label }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="grid-2">
+                            <div class="field"><label>top_layers</label><input type="number" v-model.number="form.biogrid_top_layers"></div>
+                            <div class="field"><label>min_edges</label><input type="number" v-model.number="form.biogrid_min_edges"></div>
+                            <div class="field"><label>max_nodes</label><input type="number" v-model.number="form.biogrid_max_nodes"></div>
+                            <div class="field">
+                                <label>include_genetic</label>
+                                <select v-model="form.biogrid_include_genetic">
+                                    <option :value="true">true</option>
+                                    <option :value="false">false</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div v-else style="text-align: center; color: #999;">
-                    <p>📈 检测结果将显示在这里</p>
+                <div v-else class="upload-box">
+                    <div class="field">
+                        <label>上传边列表或邻接矩阵</label>
+                        <input type="file" ref="fileInput" @change="onFileSelect" accept=".txt,.csv,.npy,.npz">
+                    </div>
+                    <p class="muted">支持 `.txt`、`.csv`、`.npy`、`.npz`。上传文件会先转成单层图，再复制为 3 层多层网络参与实验。</p>
+                    <p v-if="uploadedFile" class="inline-note">
+                        当前文件：{{ uploadedFile.name }}，{{ (uploadedFile.size / 1024).toFixed(2) }} KB
+                    </p>
                 </div>
             </div>
-        </div>
 
-        <!-- 可视化结果 -->
-        <div v-if="visualizationImage" class="results">
-            <h2>🖼️ 社区可视化</h2>
-            <div class="visualization">
-                <div v-if="visualizing" class="loading">
-                    <div class="spinner"></div>
-                    生成可视化中...
+            <div class="section">
+                <h2>算法与隐私参数</h2>
+                <div class="grid-2">
+                    <div class="field">
+                        <label>算法</label>
+                        <select v-model="form.algorithm">
+                            <option v-for="algorithm in catalog.algorithms" :key="algorithm" :value="algorithm">
+                                {{ algorithm }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>lambda</label>
+                        <input type="number" step="0.1" v-model.number="form.lambd">
+                    </div>
+                    <div class="field">
+                        <label>epsilon</label>
+                        <input type="number" step="0.1" min="0.1" v-model.number="form.epsilon">
+                    </div>
+                    <div class="field">
+                        <label>delta</label>
+                        <input type="number" step="0.00001" v-model.number="form.delta">
+                    </div>
+                    <div class="field">
+                        <label>key_size</label>
+                        <input type="number" step="128" v-model.number="form.key_size">
+                    </div>
+                    <div class="field">
+                        <label>random_state</label>
+                        <input type="number" v-model.number="form.random_state">
+                    </div>
+                    <div class="field">
+                        <label>可视化布局</label>
+                        <select v-model="form.layout">
+                            <option value="spring">spring</option>
+                            <option value="circular">circular</option>
+                            <option value="kamada_kawai">kamada_kawai</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>全算法对比</label>
+                        <select v-model="form.include_benchmark">
+                            <option :value="true">true</option>
+                            <option :value="false">false</option>
+                        </select>
+                    </div>
                 </div>
-                <img v-else :src="visualizationImage" alt="Community Visualization">
+                <p class="muted">`DH-Louvain` 和 `PD-Louvain` 会走同态加密模拟流程；`DP-Louvain` 和 `DH-Louvain` 会执行差分隐私扰动。</p>
             </div>
-        </div>
 
-        <div class="footer">
-            <p>Privacy-Preserving Community Detection System v0.1.0</p>
-            <p>© 2024 OTOTO233 | Powered by Vue.js + FastAPI</p>
-        </div>
+            <div class="actions">
+                <button class="btn-primary" @click="detectCommunities" :disabled="detecting || !canSubmit">
+                    {{ detecting ? '正在检测...' : '执行社区检测' }}
+                </button>
+                <button class="btn-secondary" @click="visualizeResults" :disabled="visualizing || !canSubmit">
+                    {{ visualizing ? '生成图像中...' : '生成可视化' }}
+                </button>
+            </div>
+
+            <div v-if="error" class="message error">{{ error }}</div>
+            <div v-if="success" class="message success">{{ success }}</div>
+        </section>
+
+        <section class="panel">
+            <h2>实验结果</h2>
+
+            <div v-if="detecting" class="viz-box">
+                <div class="spinner"></div>
+            </div>
+
+            <template v-else-if="detectionResults">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">算法</div>
+                        <div class="value" style="font-size: 1.22rem;">{{ detectionResults.selected_algorithm }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">社区数</div>
+                        <div class="value">{{ detectionResults.statistics.num_communities }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">模块度 Q</div>
+                        <div class="value">{{ formatMetric(detectionResults.statistics.modularity) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">模块密度 D</div>
+                        <div class="value">{{ formatMetric(detectionResults.statistics.module_density) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">隐私率 pr</div>
+                        <div class="value">{{ formatMetric(detectionResults.statistics.privacy_rate) }}</div>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <p><strong>数据集摘要：</strong>{{ detectionResults.dataset.summary }}</p>
+                    <p><strong>图统计：</strong>节点 {{ detectionResults.graph_info.num_nodes }}，边 {{ detectionResults.graph_info.num_edges }}，密度 {{ formatMetric(detectionResults.graph_info.density) }}，平均度 {{ formatMetric(detectionResults.graph_info.avg_degree) }}，NMI {{ formatMetric(detectionResults.statistics.nmi) }}</p>
+                    <div class="layer-list">
+                        <span v-for="layer in detectionResults.dataset.layer_info" :key="layer.name" class="info-chip">
+                            {{ layer.name }}: {{ layer.num_edges }} 边
+                        </span>
+                    </div>
+                </div>
+
+                <div v-if="detectionResults.benchmark && detectionResults.benchmark.length" class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>算法</th>
+                            <th>Q</th>
+                            <th>D</th>
+                            <th>NMI</th>
+                            <th>pr</th>
+                            <th>社区数</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="row in detectionResults.benchmark" :key="row.algorithm">
+                            <td>{{ row.algorithm }}</td>
+                            <td>{{ formatMetric(row.modularity) }}</td>
+                            <td>{{ formatMetric(row.module_density) }}</td>
+                            <td>{{ formatMetric(row.nmi) }}</td>
+                            <td>{{ formatMetric(row.privacy_rate) }}</td>
+                            <td>{{ row.num_communities }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="viz-box">
+                    <div v-if="visualizing" class="spinner"></div>
+                    <img v-else-if="visualizationImage" :src="visualizationImage" alt="Community Visualization">
+                    <p v-else class="muted">检测完成后可点击“生成可视化”查看社区结构图。</p>
+                </div>
+            </template>
+
+            <div v-else class="summary-box">
+                <p>尚未运行实验。左侧选择内置数据集或上传文件后即可开始。</p>
+            </div>
+        </section>
     </div>
+</div>
+<script>
+    const { createApp } = Vue;
 
-    <script>
-        const { createApp } = Vue;
-
-        createApp({
-            data() {
-                return {
-                    uploadedFile: null,
-                    detectionResults: null,
-                    visualizationImage: null,
-                    detecting: false,
-                    visualizing: false,
-                    error: null,
-                    success: null,
-                    params: {
-                        epsilon: 1.0,
-                        delta: 1e-5,
-                        use_encryption: false,
-                        random_state: 42,
-                        layout: 'spring'
-                    },
-                    apiUrl: 'http://localhost:8000'
-                };
+    createApp({
+        data() {
+            return {
+                apiUrl: 'http://localhost:8000',
+                catalog: { datasets: [], algorithms: [], lfr_presets: [], biogrid_species: [], defaults: {} },
+                builtinDatasets: [],
+                uploadedFile: null,
+                detectionResults: null,
+                visualizationImage: null,
+                detecting: false,
+                visualizing: false,
+                error: '',
+                success: '',
+                form: {
+                    source_type: 'builtin',
+                    dataset_name: 'karate',
+                    algorithm: 'DH-Louvain',
+                    epsilon: 1.0,
+                    delta: 1e-5,
+                    key_size: 512,
+                    random_state: 42,
+                    lambd: 0.5,
+                    layout: 'spring',
+                    include_benchmark: true,
+                    lfr_preset: 'small_easy',
+                    lfr_custom_enabled: false,
+                    lfr_n: 40,
+                    lfr_tau1: 2.5,
+                    lfr_tau2: 1.5,
+                    lfr_mu: 0.1,
+                    lfr_average_degree: 6,
+                    lfr_min_community: 10,
+                    lfr_max_community: 20,
+                    lfr_max_iters: 10000,
+                    mlfr_network_type: 'UU',
+                    mlfr_n: 40,
+                    mlfr_avg: 6.0,
+                    mlfr_max: 12,
+                    mlfr_mix: 0.1,
+                    mlfr_tau1: 2.5,
+                    mlfr_tau2: 1.5,
+                    mlfr_mincom: 10,
+                    mlfr_maxcom: 20,
+                    mlfr_l: 3,
+                    mlfr_dc: 0.0,
+                    mlfr_rc: 0.0,
+                    mlfr_mparam1: 2.0,
+                    mlfr_on: 0,
+                    mlfr_om: 0,
+                    biogrid_member: '',
+                    biogrid_top_layers: 3,
+                    biogrid_min_edges: 20,
+                    biogrid_max_nodes: 300,
+                    biogrid_include_genetic: true
+                }
+            };
+        },
+        computed: {
+            canSubmit() {
+                return this.form.source_type === 'builtin' || !!this.uploadedFile;
+            }
+        },
+        methods: {
+            async loadCatalog() {
+                try {
+                    const response = await axios.get(`${this.apiUrl}/datasets`);
+                    this.catalog = response.data;
+                    this.builtinDatasets = this.catalog.datasets.filter(item => item.source === 'builtin');
+                    if (this.catalog.defaults) {
+                        this.form.dataset_name = this.catalog.defaults.dataset_name || 'karate';
+                        this.form.algorithm = this.catalog.defaults.algorithm || 'DH-Louvain';
+                        this.form.epsilon = this.catalog.defaults.epsilon ?? 1.0;
+                        this.form.delta = this.catalog.defaults.delta ?? 1e-5;
+                        this.form.key_size = this.catalog.defaults.key_size ?? 512;
+                        this.form.random_state = this.catalog.defaults.random_state ?? 42;
+                        this.form.lambd = this.catalog.defaults.lambd ?? 0.5;
+                        this.form.layout = this.catalog.defaults.layout || 'spring';
+                        this.form.include_benchmark = this.catalog.defaults.include_benchmark ?? true;
+                    }
+                    if (this.catalog.biogrid_species.length && !this.form.biogrid_member) {
+                        this.form.biogrid_member = this.catalog.biogrid_species[0].member;
+                    }
+                } catch (err) {
+                    this.error = '无法读取后端数据目录，请先启动 FastAPI 服务。';
+                }
             },
-            methods: {
-                onFileSelect(event) {
-                    this.uploadedFile = event.target.files[0];
-                    this.error = null;
-                    this.success = '文件已选择';
-                    setTimeout(() => this.success = null, 3000);
-                },
-                async detectCommunities() {
-                    if (!this.uploadedFile) {
-                        this.error = '请先选择文件';
-                        return;
-                    }
-
-                    this.detecting = true;
-                    this.error = null;
-
-                    const formData = new FormData();
+            onFileSelect(event) {
+                this.uploadedFile = event.target.files[0] || null;
+                this.error = '';
+                this.success = this.uploadedFile ? '文件已载入，准备开始实验。' : '';
+            },
+            formatMetric(value) {
+                if (value === null || value === undefined || Number.isNaN(value)) {
+                    return 'N/A';
+                }
+                return Number(value).toFixed(4);
+            },
+            buildFormData() {
+                const formData = new FormData();
+                formData.append('source_type', this.form.source_type);
+                formData.append('dataset_name', this.form.dataset_name);
+                formData.append('algorithm', this.form.algorithm);
+                formData.append('epsilon', this.form.epsilon);
+                formData.append('delta', this.form.delta);
+                formData.append('key_size', this.form.key_size);
+                formData.append('random_state', this.form.random_state);
+                formData.append('lambd', this.form.lambd);
+                formData.append('layout', this.form.layout);
+                formData.append('include_benchmark', this.form.include_benchmark);
+                formData.append('lfr_preset', this.form.lfr_preset);
+                formData.append('lfr_custom_enabled', this.form.lfr_custom_enabled);
+                formData.append('lfr_n', this.form.lfr_n);
+                formData.append('lfr_tau1', this.form.lfr_tau1);
+                formData.append('lfr_tau2', this.form.lfr_tau2);
+                formData.append('lfr_mu', this.form.lfr_mu);
+                formData.append('lfr_average_degree', this.form.lfr_average_degree);
+                formData.append('lfr_min_community', this.form.lfr_min_community);
+                formData.append('lfr_max_community', this.form.lfr_max_community);
+                formData.append('lfr_max_iters', this.form.lfr_max_iters);
+                formData.append('mlfr_network_type', this.form.mlfr_network_type);
+                formData.append('mlfr_n', this.form.mlfr_n);
+                formData.append('mlfr_avg', this.form.mlfr_avg);
+                formData.append('mlfr_max', this.form.mlfr_max);
+                formData.append('mlfr_mix', this.form.mlfr_mix);
+                formData.append('mlfr_tau1', this.form.mlfr_tau1);
+                formData.append('mlfr_tau2', this.form.mlfr_tau2);
+                formData.append('mlfr_mincom', this.form.mlfr_mincom);
+                formData.append('mlfr_maxcom', this.form.mlfr_maxcom);
+                formData.append('mlfr_l', this.form.mlfr_l);
+                formData.append('mlfr_dc', this.form.mlfr_dc);
+                formData.append('mlfr_rc', this.form.mlfr_rc);
+                formData.append('mlfr_mparam1', this.form.mlfr_mparam1);
+                formData.append('mlfr_on', this.form.mlfr_on);
+                formData.append('mlfr_om', this.form.mlfr_om);
+                formData.append('biogrid_member', this.form.biogrid_member);
+                formData.append('biogrid_top_layers', this.form.biogrid_top_layers);
+                formData.append('biogrid_min_edges', this.form.biogrid_min_edges);
+                formData.append('biogrid_max_nodes', this.form.biogrid_max_nodes);
+                formData.append('biogrid_include_genetic', this.form.biogrid_include_genetic);
+                if (this.form.source_type === 'upload' && this.uploadedFile) {
                     formData.append('file', this.uploadedFile);
-                    formData.append('epsilon', this.params.epsilon);
-                    formData.append('delta', this.params.delta);
-                    formData.append('use_encryption', this.params.use_encryption);
-                    formData.append('random_state', this.params.random_state);
-
-                    try {
-                        const response = await axios.post(
-                            `${this.apiUrl}/detect`,
-                            formData,
-                            { headers: { 'Content-Type': 'multipart/form-data' } }
-                        );
-                        this.detectionResults = response.data;
-                        this.success = '社区检测完成！';
-                        setTimeout(() => this.success = null, 3000);
-                    } catch (err) {
-                        this.error = '检测失败: ' + (err.response?.data?.detail || err.message);
-                    } finally {
-                        this.detecting = false;
+                }
+                return formData;
+            },
+            async detectCommunities() {
+                if (!this.canSubmit) {
+                    this.error = '请先选择内置数据集或上传文件。';
+                    return;
+                }
+                this.detecting = true;
+                this.error = '';
+                this.success = '';
+                this.visualizationImage = null;
+                try {
+                    const response = await axios.post(
+                        `${this.apiUrl}/detect`,
+                        this.buildFormData(),
+                        { headers: { 'Content-Type': 'multipart/form-data' } }
+                    );
+                    this.detectionResults = response.data;
+                    this.success = '社区检测完成。';
+                } catch (err) {
+                    this.error = '检测失败：' + (err.response?.data?.detail || err.message);
+                } finally {
+                    this.detecting = false;
+                }
+            },
+            async visualizeResults() {
+                if (!this.canSubmit) {
+                    this.error = '请先选择内置数据集或上传文件。';
+                    return;
+                }
+                this.visualizing = true;
+                this.error = '';
+                this.success = '';
+                try {
+                    const response = await axios.post(
+                        `${this.apiUrl}/visualize`,
+                        this.buildFormData(),
+                        {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                            responseType: 'blob'
+                        }
+                    );
+                    if (this.visualizationImage) {
+                        URL.revokeObjectURL(this.visualizationImage);
                     }
-                },
-                async visualizeResults() {
-                    if (!this.uploadedFile) {
-                        this.error = '请先选择文件';
-                        return;
-                    }
-
-                    this.visualizing = true;
-                    this.error = null;
-
-                    const formData = new FormData();
-                    formData.append('file', this.uploadedFile);
-                    formData.append('format', this.params.layout);
-
-                    try {
-                        const response = await axios.post(
-                            `${this.apiUrl}/visualize`,
-                            formData,
-                            {
-                                headers: { 'Content-Type': 'multipart/form-data' },
-                                responseType: 'blob'
-                            }
-                        );
-                        const url = window.URL.createObjectURL(response.data);
-                        this.visualizationImage = url;
-                        this.success = '可视化生成完成！';
-                        setTimeout(() => this.success = null, 3000);
-                    } catch (err) {
-                        this.error = '生成失败: ' + (err.response?.data?.detail || err.message);
-                    } finally {
-                        this.visualizing = false;
-                    }
+                    this.visualizationImage = URL.createObjectURL(response.data);
+                    this.success = '可视化图像已生成。';
+                } catch (err) {
+                    this.error = '可视化失败：' + (err.response?.data?.detail || err.message);
+                } finally {
+                    this.visualizing = false;
                 }
             }
-        }).mount('#app');
-    </script>
+        },
+        mounted() {
+            this.loadCatalog();
+        }
+    }).mount('#app');
+</script>
 </body>
 </html>
