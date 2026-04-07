@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隐私保护的社区检测系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .params {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .param-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border 0.3s;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+        }
+
+        .range-value {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #654a8f;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .results h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .visualization {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .visualization img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .footer {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>🔐 隐私保护社区检测系统</h1>
+            <p>Privacy-Preserving Community Detection System</p>
+        </div>
+
+        <div class="container">
+            <!-- 左侧：上传和参数 -->
+            <div class="card">
+                <h2>📤 上传数据集</h2>
+
+                <div class="upload-area" @click="$refs.fileInput.click()">
+                    <div class="upload-icon">📁</div>
+                    <p>点击选择文件或拖拽上传</p>
+                    <p style="font-size: 0.9em; color: #999; margin-top: 10px;">
+                        支持格式: .txt, .csv, .npy
+                    </p>
+                    <input type="file" ref="fileInput" @change="onFileSelect" accept=".txt,.csv,.npy">
+                </div>
+
+                <div v-if="uploadedFile" class="file-info">
+                    <strong>已选择文件:</strong> {{ uploadedFile.name }}
+                    <br>
+                    <small>大小: {{ (uploadedFile.size / 1024).toFixed(2) }} KB</small>
+                </div>
+
+                <h2 style="margin-top: 30px;">⚙️ 检测参数</h2>
+
+                <div class="params">
+                    <div class="param-group">
+                        <label for="epsilon">隐私预算 (ε)</label>
+                        <div class="slider-container">
+                            <input type="range" id="epsilon" v-model="params.epsilon"
+                                   min="0.1" max="10" step="0.1">
+                            <span class="range-value">{{ params.epsilon }}</span>
+                        </div>
+                    </div>
+
+                    <div class="param-group">
+                        <label for="delta">失败概率 (δ)</label>
+                        <input type="number" id="delta" v-model.number="params.delta"
+                               min="1e-6" max="0.1" step="1e-5">
+                    </div>
+
+                    <div class="param-group">
+                        <label for="layout">布局方式</label>
+                        <select v-model="params.layout">
+                            <option value="spring">Spring 布局</option>
+                            <option value="circular">圆形布局</option>
+                            <option value="kamada_kawai">Kamada-Kawai 布局</option>
+                        </select>
+                    </div>
+
+                    <div class="param-group">
+                        <label for="randomState">随机种子</label>
+                        <input type="number" id="randomState" v-model.number="params.random_state">
+                    </div>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="useEncryption" v-model="params.use_encryption">
+                    <label for="useEncryption">使用同态加密</label>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" @click="detectCommunities"
+                            :class="{ 'btn-disabled': !uploadedFile || detecting }">
+                        {{ detecting ? '检测中...' : '🚀 开始检测' }}
+                    </button>
+                    <button class="btn-secondary" @click="visualizeResults"
+                            :class="{ 'btn-disabled': !detectionResults || visualizing }">
+                        {{ visualizing ? '生成中...' : '🎨 生成图像' }}
+                    </button>
+                </div>
+
+                <div v-if="error" class="error">
+                    ❌ {{ error }}
+                </div>
+
+                <div v-if="success" class="success">
+                    ✅ {{ success }}
+                </div>
+            </div>
+
+            <!-- 右侧：检测结果 -->
+            <div class="card">
+                <h2>📊 检测结果</h2>
+
+                <div v-if="detecting" class="loading">
+                    <div class="spinner"></div>
+                    正在检测社区...
+                </div>
+
+                <div v-else-if="detectionResults" class="results" style="background: transparent; box-shadow: none; padding: 0;">
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="label">社区数量</div>
+                            <div class="value">{{ detectionResults.statistics.num_communities }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">模块度</div>
+                            <div class="value">{{ detectionResults.statistics.modularity.toFixed(4) }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">平均社区大小</div>
+                            <div class="value">{{ detectionResults.statistics.avg_community_size.toFixed(2) }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">图密度</div>
+                            <div class="value">{{ detectionResults.graph_info.density.toFixed(4) }}</div>
+                        </div>
+                    </div>
+
+                    <div class="file-info">
+                        <strong>图信息:</strong>
+                        <br>
+                        节点数: {{ detectionResults.graph_info.num_nodes }}
+                        <br>
+                        边数: {{ detectionResults.graph_info.num_edges }}
+                        <br>
+                        平均度数: {{ detectionResults.graph_info.avg_degree.toFixed(2) }}
+                    </div>
+                </div>
+
+                <div v-else style="text-align: center; color: #999;">
+                    <p>📈 检测结果将显示在这里</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 可视化结果 -->
+        <div v-if="visualizationImage" class="results">
+            <h2>🖼️ 社区可视化</h2>
+            <div class="visualization">
+                <div v-if="visualizing" class="loading">
+                    <div class="spinner"></div>
+                    生成可视化中...
+                </div>
+                <img v-else :src="visualizationImage" alt="Community Visualization">
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Privacy-Preserving Community Detection System v0.1.0</p>
+            <p>© 2024 OTOTO233 | Powered by Vue.js + FastAPI</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    uploadedFile: null,
+                    detectionResults: null,
+                    visualizationImage: null,
+                    detecting: false,
+                    visualizing: false,
+                    error: null,
+                    success: null,
+                    params: {
+                        epsilon: 1.0,
+                        delta: 1e-5,
+                        use_encryption: false,
+                        random_state: 42,
+                        layout: 'spring'
+                    },
+                    apiUrl: 'http://localhost:8000'
+                };
+            },
+            methods: {
+                onFileSelect(event) {
+                    this.uploadedFile = event.target.files[0];
+                    this.error = null;
+                    this.success = '文件已选择';
+                    setTimeout(() => this.success = null, 3000);
+                },
+                async detectCommunities() {
+                    if (!this.uploadedFile) {
+                        this.error = '请先选择文件';
+                        return;
+                    }
+
+                    this.detecting = true;
+                    this.error = null;
+
+                    const formData = new FormData();
+                    formData.append('file', this.uploadedFile);
+                    formData.append('epsilon', this.params.epsilon);
+                    formData.append('delta', this.params.delta);
+                    formData.append('use_encryption', this.params.use_encryption);
+                    formData.append('random_state', this.params.random_state);
+
+                    try {
+                        const response = await axios.post(
+                            `${this.apiUrl}/detect`,
+                            formData,
+                            { headers: { 'Content-Type': 'multipart/form-data' } }
+                        );
+                        this.detectionResults = response.data;
+                        this.success = '社区检测完成！';
+                        setTimeout(() => this.success = null, 3000);
+                    } catch (err) {
+                        this.error = '检测失败: ' + (err.response?.data?.detail || err.message);
+                    } finally {
+                        this.detecting = false;
+                    }
+                },
+                async visualizeResults() {
+                    if (!this.uploadedFile) {
+                        this.error = '请先选择文件';
+                        return;
+                    }
+
+                    this.visualizing = true;
+                    this.error = null;
+
+                    const formData = new FormData();
+                    formData.append('file', this.uploadedFile);
+                    formData.append('format', this.params.layout);
+
+                    try {
+                        const response = await axios.post(
+                            `${this.apiUrl}/visualize`,
+                            formData,
+                            {
+                                headers: { 'Content-Type': 'multipart/form-data' },
+                                responseType: 'blob'
+                            }
+                        );
+                        const url = window.URL.createObjectURL(response.data);
+                        this.visualizationImage = url;
+                        this.success = '可视化生成完成！';
+                        setTimeout(() => this.success = null, 3000);
+                    } catch (err) {
+                        this.error = '生成失败: ' + (err.response?.data?.detail || err.message);
+                    } finally {
+                        this.visualizing = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
