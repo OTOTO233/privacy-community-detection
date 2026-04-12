@@ -158,12 +158,20 @@ def _choose_biogrid_species() -> str:
 def _collect_biogrid_params():
     # BioGRID 原始图通常很大，因此额外提供 max_nodes 做子图截取，避免实验跑太久。
     print("\n请输入 BioGRID 参数，直接回车使用默认值:")
+    auto_layers = (input("auto_layers（按去重边累计约 82% 自动选层数）[y]: ").strip().lower() or "y") in {
+        "y",
+        "yes",
+        "1",
+        "true",
+        "",
+    }
     return {
         "member": _choose_biogrid_species(),
-        "top_layers": _prompt_int("top_layers", 3),
-        "min_edges": _prompt_int("min_edges", 20),
+        "top_layers": _prompt_int("top_layers（固定层数或自动模式上限，最大 3）", 3),
+        "min_edges": _prompt_int("min_edges", 12),
         "max_nodes": _prompt_int("max_nodes", 300),
         "include_genetic": (input("include_genetic [y]: ").strip().lower() or "y") in {"y", "yes", "1", "true"},
+        "auto_layers": auto_layers,
     }
 
 

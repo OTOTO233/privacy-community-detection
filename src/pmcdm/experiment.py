@@ -5,10 +5,15 @@ from typing import Dict, List, Tuple, Optional
 import random
 
 import networkx as nx
-from sklearn.metrics import normalized_mutual_info_score
 
 from .architecture import CloudServer1, CloudServer2, TerminalClient
-from .metrics import communities_to_groups, modularity_density, partition_to_labels, weighted_modularity_density
+from .metrics import (
+    communities_to_groups,
+    modularity_density,
+    nmi_score,
+    partition_to_labels,
+    weighted_modularity_density,
+)
 from .s_louvain import SLouvain
 
 
@@ -80,11 +85,13 @@ class PMCDMExperiment:
 
         nodes = sorted(original_layers[0].nodes())
         pred = partition_to_labels(communities, nodes)
-        # 真实标签不是所有数据集都有，所以 NMI 在真实标签缺失时记为 nan。
-        nmi = float("nan")
-        if gt_labels is not None:
-            gt = partition_to_labels(gt_labels, nodes)
-            nmi = normalized_mutual_info_score(gt, pred)
+        # 有真实标签时与标签比；无标签（如 BioGRID）时与原始网上 S-Louvain 参考划分比。
+        nmi = nmi_score(
+            pred,
+            layers=original_layers,
+            gt_labels=gt_labels,
+            random_state=self.random_state,
+        )
 
         metric_graph = layer_inputs[0]
         groups = list(communities_to_groups(communities).values())
