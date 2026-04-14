@@ -67,6 +67,23 @@ LFR_PRESETS = {
             "max_iters": 10000,
         },
     },
+    # # 与论文实验表对齐：N=500，γ=2，⟨k⟩=10，maxk=40，q=3；μ 由实验扫描。
+    # # 注：文献 β=1，NetworkX 要求 tau2>1，此处取 1.5 以保证可生成。
+    # "bench500": {
+    #     "label": "LFR N500（论文表：gamma=2, avg_k=10, maxk=40, q=3）",
+    #     "params": {
+    #         "n": 500,
+    #         "tau1": 2.0,
+    #         "tau2": 1.5,
+    #         "mu": 0.25,
+    #         "average_degree": 10,
+    #         "max_degree": 40,
+    #         "min_community": 20,
+    #         "max_community": 50,
+    #         "max_iters": 15000,
+    #         "multiplex_layers": 3,
+    #     },
+    # },
 }
 
 
@@ -157,7 +174,11 @@ def list_lfr_presets() -> List[str]:
 
 def _validate_lfr_params(params: Dict[str, Any]) -> Dict[str, Any]:
     # 这里只做“显然不合理”的参数校验，真正是否可生成还要交给 NetworkX 的 LFR 实现。
-    validated = {
+    multiplex_layers = int(params.get("multiplex_layers", 3))
+    if multiplex_layers < 1 or multiplex_layers > 32:
+        raise ValueError("LFR 参数错误: multiplex_layers 应在 1~32（多层网络层数 q）")
+
+    validated: Dict[str, Any] = {
         "n": int(params["n"]),
         "tau1": float(params["tau1"]),
         "tau2": float(params["tau2"]),
@@ -166,7 +187,10 @@ def _validate_lfr_params(params: Dict[str, Any]) -> Dict[str, Any]:
         "min_community": int(params["min_community"]),
         "max_community": int(params["max_community"]),
         "max_iters": int(params.get("max_iters", 10000)),
+        "multiplex_layers": multiplex_layers,
     }
+    if params.get("max_degree") not in (None, ""):
+        validated["max_degree"] = int(params["max_degree"])
 
     if validated["n"] < 10:
         raise ValueError("LFR 参数错误: n 必须 >= 10")
@@ -184,12 +208,18 @@ def _validate_lfr_params(params: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("LFR 参数错误: average_degree 必须小于 n")
     if validated["max_iters"] <= 0:
         raise ValueError("LFR 参数错误: max_iters 必须 > 0")
+    if "max_degree" in validated:
+        md = validated["max_degree"]
+        if md <= 1 or md >= validated["n"]:
+            raise ValueError("LFR 参数错误: max_degree 应在 (1, n) 内")
+
+    if params.get("seed") is not None:
+        validated["seed"] = int(params["seed"])
 
     return validated
 
 
 def load_lfr_dataset(variant: Any = None) -> DatasetBundle:
-    seed = 42
     if isinstance(variant, dict):
         params = _validate_lfr_params(variant)
         label = "LFR Custom"
@@ -201,10 +231,14 @@ def load_lfr_dataset(variant: Any = None) -> DatasetBundle:
         params = _validate_lfr_params(preset["params"])
         label = preset["label"]
 
+    seed = int(params.get("seed", 42))
+
     # LFR 在这里先生成单层基准图，再复制成多层并加轻微权重差异。
+    multiplex_layers = int(params["multiplex_layers"])
+    nx_kwargs = {k: v for k, v in params.items() if k not in ("multiplex_layers", "seed")}
     base_graph = nx.generators.community.LFR_benchmark_graph(
         seed=seed,
-        **params,
+        **nx_kwargs,
     )
 
     base_graph = nx.Graph(base_graph)
@@ -222,11 +256,12 @@ def load_lfr_dataset(variant: Any = None) -> DatasetBundle:
             community_to_id[community] = len(community_to_id)
         ground_truth[node] = community_to_id[community]
 
-    layers = PMCDMExperiment.build_multiplex_from_base(base_graph, layers=3, seed=seed)
+    layers = PMCDMExperiment.build_multiplex_from_base(base_graph, layers=multiplex_layers, seed=seed)
     summary = (
-        f"{label} | 层数={len(layers)} | 节点={base_graph.number_of_nodes()} "
+        f"{label} | 层数 q={multiplex_layers} | 节点={base_graph.number_of_nodes()} "
         f"| 边={base_graph.number_of_edges()} | 社区数={len(set(ground_truth.values()))} "
         f"| mu={params['mu']} avg_deg={params['average_degree']}"
+        + (f" maxk={params['max_degree']}" if params.get("max_degree") is not None else "")
     )
     return DatasetBundle(
         name=label,
@@ -451,35 +486,65 @@ def load_mlfr_dataset(variant: Any = None) -> DatasetBundle:
     )
 
 
+def _biogrid_tab3_label(filename: str) -> str:
+    base = Path(filename).name
+    rest = base.removeprefix("BIOGRID-ORGANISM-")
+    slug = rest.rsplit("-", 2)[0] if rest else rest
+    return slug.replace("_", " ")
+
+
 def get_biogrid_species() -> List[Dict[str, str]]:
-    # BioGRID 是一个包含多个物种的压缩包，这里只负责列出其中所有可选文件。
+    # BioGRID：支持 data/BIOGRID-ORGANISM-LATEST.tab3.zip，或解压目录 data/BIOGRID-ORGANISM-LATEST.tab3/
     root = Path(__file__).resolve().parents[1]
     zip_path = root / "data" / "BIOGRID-ORGANISM-LATEST.tab3.zip"
-    if not zip_path.exists():
-        raise FileNotFoundError("未找到 data/BIOGRID-ORGANISM-LATEST.tab3.zip")
-
+    tab3_dir = root / "data" / "BIOGRID-ORGANISM-LATEST.tab3"
     species: List[Dict[str, str]] = []
-    with zipfile.ZipFile(zip_path) as zf:
-        for member in sorted(name for name in zf.namelist() if name.endswith(".txt")):
-            label = member.removeprefix("BIOGRID-ORGANISM-")
-            label = label.rsplit("-", 2)[0]
-            label = label.replace("_", " ")
-            species.append({"member": member, "label": label})
-    return species
+
+    if zip_path.is_file():
+        with zipfile.ZipFile(zip_path) as zf:
+            for name in sorted(n for n in zf.namelist() if n.endswith(".txt") and not n.endswith("/")):
+                basename = Path(name).name
+                species.append({"member": basename, "label": _biogrid_tab3_label(basename)})
+        return species
+
+    if tab3_dir.is_dir():
+        for path in sorted(tab3_dir.glob("BIOGRID-ORGANISM-*.tab3.txt")):
+            species.append({"member": path.name, "label": _biogrid_tab3_label(path.name)})
+        return species
+
+    return []
+
+
+def _coerce_opt_bool(value: Any, default: bool) -> bool:
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+BIOGRID_MAX_LAYERS = 3
 
 
 def _validate_biogrid_params(params: Dict[str, Any]) -> Dict[str, Any]:
     raw_member = params.get("member", "")
     member = "" if raw_member is None else str(raw_member).strip()
+    member = Path(member).name
     species = get_biogrid_species()
     available_members = {item["member"] for item in species}
-    if not member:
-        member = "BIOGRID-ORGANISM-Escherichia_coli_K12_MG1655-5.0.256.tab3.txt"
+    if not member and species:
+        member = species[0]["member"]
+    if not available_members:
+        raise ValueError(
+            "未找到 BioGRID 数据：请将 BIOGRID-ORGANISM-LATEST.tab3.zip 或解压目录 "
+            "data/BIOGRID-ORGANISM-LATEST.tab3/ 置于项目 data/ 下"
+        )
     if member not in available_members:
-        raise ValueError("BioGRID 参数错误: 选择的物种文件不存在于压缩包中")
+        raise ValueError("BioGRID 参数错误: 选择的物种数据文件不可用，请从列表中重新选择")
 
-    top_layers = int(params.get("top_layers", 3))
-    min_edges = int(params.get("min_edges", 20))
+    top_layers = int(params.get("top_layers", BIOGRID_MAX_LAYERS))
+    top_layers = min(max(1, top_layers), BIOGRID_MAX_LAYERS)
+    min_edges = int(params.get("min_edges", 12))
     max_nodes = int(params.get("max_nodes", 300))
     include_genetic = bool(params.get("include_genetic", True))
 
@@ -490,20 +555,51 @@ def _validate_biogrid_params(params: Dict[str, Any]) -> Dict[str, Any]:
     if max_nodes < 20:
         raise ValueError("BioGRID 参数错误: max_nodes 必须 >= 20")
 
+    auto_layers = _coerce_opt_bool(params.get("auto_layers"), True)
+
     return {
         "member": member,
         "top_layers": top_layers,
         "min_edges": min_edges,
         "max_nodes": max_nodes,
         "include_genetic": include_genetic,
+        "auto_layers": auto_layers,
     }
+
+
+def _infer_biogrid_layer_count(counts: List[int], max_layers: int, coverage_target: float = 0.82) -> tuple[int, float]:
+    """按「去重边数」降序序列估计层数：取最小 k 使累计占比 >= coverage_target，且 k 不超过 max_layers。
+
+    若仅一层已达标但第二层仍占总量 >= 4%，则至少取 2 层（在 max_layers 允许且存在时），便于多层实验。
+    """
+    if not counts:
+        return 0, 0.0
+    n = len(counts)
+    total = sum(counts)
+    if total <= 0:
+        return 1, 0.0
+    cap = max(1, min(max_layers, n))
+    cum = 0
+    k = cap
+    for i in range(cap):
+        cum += counts[i]
+        if cum / total >= coverage_target:
+            k = i + 1
+            break
+    else:
+        k = cap
+    k = min(k, cap)
+    cov = sum(counts[:k]) / total
+    if k == 1 and n >= 2 and cap >= 2 and counts[1] / total >= 0.04:
+        k = 2
+        cov = sum(counts[:k]) / total
+    return max(1, k), cov
 
 
 def load_biogrid_dataset(variant: Any = None) -> DatasetBundle:
     root = Path(__file__).resolve().parents[1]
     zip_path = root / "data" / "BIOGRID-ORGANISM-LATEST.tab3.zip"
-    if not zip_path.exists():
-        raise FileNotFoundError("未找到 data/BIOGRID-ORGANISM-LATEST.tab3.zip")
+    tab3_dir = root / "data" / "BIOGRID-ORGANISM-LATEST.tab3"
 
     params = _validate_biogrid_params(variant or {})
     species_map = {item["member"]: item["label"] for item in get_biogrid_species()}
@@ -514,64 +610,148 @@ def load_biogrid_dataset(variant: Any = None) -> DatasetBundle:
     all_nodes: set[str] = set()
     system_counter: Counter[str] = Counter()
 
-    with zipfile.ZipFile(zip_path) as zf:
-        with zf.open(params["member"]) as handle:
-            reader = csv.DictReader(
-                (line.decode("utf-8", errors="ignore") for line in handle),
-                delimiter="\t",
-            )
-            for row in reader:
-                exp_type = row["Experimental System Type"].strip()
-                if not params["include_genetic"] and exp_type == "genetic":
-                    continue
-                system = row["Experimental System"].strip()
-                if not system or system == "-":
-                    continue
-                source = row["Official Symbol Interactor A"].strip() or row["BioGRID ID Interactor A"].strip()
-                target = row["Official Symbol Interactor B"].strip() or row["BioGRID ID Interactor B"].strip()
-                if not source or not target or source == target:
-                    continue
-                # 当前实验统一按无向图处理，所以这里先把边排序后去重。
-                edge = tuple(sorted((source, target)))
-                edges_by_system[system].add(edge)
-                system_counter[system] += 1
-                all_nodes.add(source)
-                all_nodes.add(target)
+    basename = params["member"]
 
-    # 只保留边数足够多的几个实验系统层，否则层太稀疏时社区检测意义不大。
-    selected_systems = [
-        system
-        for system, _ in system_counter.most_common()
-        if len(edges_by_system[system]) >= params["min_edges"]
-    ][: params["top_layers"]]
+    def _consume_rows(handle) -> None:
+        reader = csv.DictReader(
+            (line.decode("utf-8", errors="ignore") for line in handle),
+            delimiter="\t",
+        )
+        for row in reader:
+            exp_type = row["Experimental System Type"].strip()
+            if not params["include_genetic"] and exp_type == "genetic":
+                continue
+            system = row["Experimental System"].strip()
+            if not system or system == "-":
+                continue
+            source = row["Official Symbol Interactor A"].strip() or row["BioGRID ID Interactor A"].strip()
+            target = row["Official Symbol Interactor B"].strip() or row["BioGRID ID Interactor B"].strip()
+            if not source or not target or source == target:
+                continue
+            edge = tuple(sorted((source, target)))
+            edges_by_system[system].add(edge)
+            system_counter[system] += 1
+            all_nodes.add(source)
+            all_nodes.add(target)
+
+    if zip_path.is_file():
+        with zipfile.ZipFile(zip_path) as zf:
+            inner = next((n for n in zf.namelist() if Path(n).name == basename), None)
+            if inner is None:
+                raise FileNotFoundError(f"BioGRID 压缩包中未找到: {basename}")
+            with zf.open(inner) as handle:
+                _consume_rows(handle)
+    else:
+        loose = tab3_dir / basename
+        if not loose.is_file():
+            raise FileNotFoundError(
+                f"未找到 BioGRID 文件: {loose}（请确认已下载或解压 tab3 数据）"
+            )
+        with loose.open("rb") as handle:
+            _consume_rows(handle)
+
+    def _pick_layers() -> tuple[List[str], str]:
+        """按去重边数排序；支持自动层数（覆盖率阈值）或固定取前 top_layers 层。"""
+        min_e = params["min_edges"]
+        top_l = params["top_layers"]
+        auto = params.get("auto_layers", False)
+
+        ranked = sorted(
+            edges_by_system.keys(),
+            key=lambda s: len(edges_by_system[s]),
+            reverse=True,
+        )
+        strict = [s for s in ranked if len(edges_by_system[s]) >= min_e]
+        if strict:
+            base = strict
+            relaxed = False
+        else:
+            base = [s for s in ranked if len(edges_by_system[s]) >= 1]
+            relaxed = True
+
+        if not base:
+            return [], ""
+
+        counts = [len(edges_by_system[s]) for s in base]
+
+        if auto:
+            k, cov = _infer_biogrid_layer_count(counts, max_layers=top_l)
+            selected = base[:k]
+            parts = [
+                f"自动层数={k}（所选层合计覆盖约 {cov:.0%} 的层内去重边；目标覆盖率 82%；上限 max_layers={top_l}）"
+            ]
+            if cov < 0.78 and k >= top_l:
+                parts.append("（已达层数上限，覆盖率可能低于目标，可调高「最大层数」）")
+            if relaxed:
+                thinnest = min(len(edges_by_system[s]) for s in selected) if selected else 0
+                parts.insert(
+                    0,
+                    f"min_edges={min_e} 时无层达阈值，已用全部有边系统参与推断（最薄候选层约 {thinnest} 条去重边）。",
+                )
+            return selected, "".join(parts)
+
+        selected = base[:top_l]
+        if relaxed:
+            thinnest = min(len(edges_by_system[s]) for s in selected) if selected else 0
+            note = (
+                f"min_edges={min_e} 时无实验系统层达到该阈值，已自动选取去重边数最多的 {len(selected)} 层"
+                f"（最薄层约 {thinnest} 条边）；可在前端调低「每层最少边数」以匹配预期筛选。"
+            )
+            return selected, note
+        return selected, ""
+
+    selected_systems, layer_note = _pick_layers()
 
     if not selected_systems:
-        raise ValueError("BioGRID 数据集中没有满足条件的实验系统层")
+        hint = ""
+        if not edges_by_system:
+            hint = " 未解析到任何互作行：可尝试勾选「包含 genetic 类型互作」，或确认 tab3 文件完整。"
+        else:
+            hint = f" 当前 min_edges={params['min_edges']}；可调低该值或增大 top_layers。"
+        raise ValueError("BioGRID 数据集中没有满足条件的实验系统层。" + hint)
+
+    # 仅使用「选中层」上出现过的边的端点作为顶点集。若用全文件 all_nodes 铺层，
+    # 则大量节点在选中层上无边、聚合度为 0，max_nodes 截断时会被零度节点占满，子图截取失效。
+    union_nodes: set[str] = set()
+    for system in selected_systems:
+        for u, v in edges_by_system[system]:
+            union_nodes.add(u)
+            union_nodes.add(v)
 
     layer_graphs: List[nx.Graph] = []
     for system in selected_systems:
         graph = nx.Graph(layer=system)
-        graph.add_nodes_from(all_nodes)
+        graph.add_nodes_from(union_nodes)
         for source, target in edges_by_system[system]:
             graph.add_edge(source, target, weight=1.0)
         layer_graphs.append(graph)
 
     aggregate = nx.Graph()
-    aggregate.add_nodes_from(all_nodes)
+    aggregate.add_nodes_from(union_nodes)
     for graph in layer_graphs:
         aggregate.add_edges_from(graph.edges())
 
     # BioGRID 某些物种规模极大，这里截取高连接节点构成的真实子图，保证实验能跑完。
-    if aggregate.number_of_nodes() > params["max_nodes"]:
-        degree_order = sorted(aggregate.degree, key=lambda item: (-item[1], item[0]))
+    active_nodes = [n for n, d in aggregate.degree() if d > 0]
+    if len(active_nodes) > params["max_nodes"]:
+        degree_order = sorted(
+            ((n, aggregate.degree[n]) for n in active_nodes),
+            key=lambda item: (-item[1], item[0]),
+        )
         kept_nodes = {node for node, _ in degree_order[: params["max_nodes"]]}
         layer_graphs = [graph.subgraph(kept_nodes).copy() for graph in layer_graphs]
-        all_nodes = kept_nodes
+        final_nodes: set[str] = kept_nodes
+        trunc_note = f" | 已按聚合度截断 {len(union_nodes)}→{len(final_nodes)}"
+    else:
+        final_nodes = union_nodes
+        trunc_note = ""
 
     summary = (
-        f"BioGRID {label} | 层数={len(layer_graphs)} | 节点={len(all_nodes)} | "
+        f"BioGRID {label} | 层数={len(layer_graphs)} | 节点={len(final_nodes)} | "
         + " ".join(f"{g.graph['layer']}={g.number_of_edges()}" for g in layer_graphs)
         + f" | max_nodes={params['max_nodes']}"
+        + trunc_note
+        + (f" | {layer_note}" if layer_note else "")
     )
     return DatasetBundle(
         name=f"BioGRID {label}",

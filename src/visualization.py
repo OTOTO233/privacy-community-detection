@@ -7,6 +7,7 @@ import networkx as nx
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 import numpy as np
 from typing import Dict, List, Optional
 import seaborn as sns
@@ -26,6 +27,131 @@ class Visualizer:
         self.figsize = figsize
         sns.set_style("whitegrid")
 
+    def _compute_layout(self, graph: nx.Graph, layout: str) -> Dict:
+        if layout == "spring":
+            return nx.spring_layout(graph, k=0.5, iterations=50, seed=42)
+        if layout == "circular":
+            return nx.circular_layout(graph)
+        if layout == "kamada_kawai":
+            return nx.kamada_kawai_layout(graph)
+        if layout == "3d_spring":
+            return nx.spring_layout(graph, dim=3, k=0.7, iterations=100, seed=42)
+        return nx.spring_layout(graph, k=0.5, iterations=50, seed=42)
+
+    def _build_community_colors(self, communities: Dict[int, int]) -> Dict[int, np.ndarray]:
+        unique_ids = sorted(set(communities.values()))
+        colors = plt.cm.Set3(np.linspace(0, 1, len(unique_ids)))
+        return {comm: colors[i] for i, comm in enumerate(unique_ids)}
+
+    def _visualize_communities_2d(
+            self,
+            graph: nx.Graph,
+            communities: Dict[int, int],
+            title: str,
+            output_path: Optional[str],
+            layout: str,
+    ) -> None:
+        fig, ax = plt.subplots(figsize=self.figsize)
+        pos = self._compute_layout(graph, layout)
+        community_colors = self._build_community_colors(communities)
+        node_colors = [community_colors[communities[node]] for node in graph.nodes()]
+
+        nx.draw_networkx_edges(
+            graph, pos,
+            alpha=0.2,
+            width=0.5,
+            ax=ax
+        )
+
+        nx.draw_networkx_nodes(
+            graph, pos,
+            node_color=node_colors,
+            node_size=200,
+            alpha=0.8,
+            ax=ax
+        )
+
+        nx.draw_networkx_labels(
+            graph, pos,
+            font_size=8,
+            font_weight='bold',
+            ax=ax
+        )
+
+        ax.set_title(title, fontsize=16, fontweight='bold')
+        ax.axis('off')
+        plt.tight_layout()
+
+        if output_path:
+            plt.savefig(output_path, dpi=300, bbox_inches='tight')
+            print(f"图表已保存到: {output_path}")
+            plt.close(fig)
+            return
+
+        plt.show()
+
+    def _visualize_communities_3d(
+            self,
+            graph: nx.Graph,
+            communities: Dict[int, int],
+            title: str,
+            output_path: Optional[str],
+    ) -> None:
+        fig = plt.figure(figsize=self.figsize)
+        ax = fig.add_subplot(111, projection="3d")
+        pos = self._compute_layout(graph, "3d_spring")
+        community_colors = self._build_community_colors(communities)
+
+        for source, target in graph.edges():
+            x_coords = [pos[source][0], pos[target][0]]
+            y_coords = [pos[source][1], pos[target][1]]
+            z_coords = [pos[source][2], pos[target][2]]
+            ax.plot(x_coords, y_coords, z_coords, color="#7f8c8d", alpha=0.18, linewidth=0.6)
+
+        xs = [pos[node][0] for node in graph.nodes()]
+        ys = [pos[node][1] for node in graph.nodes()]
+        zs = [pos[node][2] for node in graph.nodes()]
+        node_colors = [community_colors[communities[node]] for node in graph.nodes()]
+
+        ax.scatter(
+            xs,
+            ys,
+            zs,
+            c=node_colors,
+            s=70,
+            alpha=0.9,
+            depthshade=True,
+            edgecolors="white",
+            linewidths=0.4,
+        )
+
+        # 3D 视图里给全部节点打标签会非常拥挤，只标记高连接节点提高可读性。
+        top_nodes = sorted(graph.degree, key=lambda item: item[1], reverse=True)[: min(15, graph.number_of_nodes())]
+        for node, _ in top_nodes:
+            ax.text(
+                pos[node][0],
+                pos[node][1],
+                pos[node][2],
+                str(node),
+                fontsize=8,
+                color="#213547",
+            )
+
+        ax.set_title(title, fontsize=16, fontweight='bold')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+        ax.grid(False)
+        ax.view_init(elev=22, azim=38)
+
+        if output_path:
+            plt.savefig(output_path, dpi=300, bbox_inches='tight')
+            print(f"图表已保存到: {output_path}")
+            plt.close(fig)
+            return
+
+        plt.show()
+
     def visualize_communities(
             self,
             graph: nx.Graph,
@@ -42,68 +168,13 @@ class Visualizer:
             communities: 节点到社区的映射
             title: 图表标题
             output_path: 输出路径
-            layout: 布局方式 ('spring', 'circular', 'kamada_kawai')
+            layout: 布局方式 ('spring', 'circular', 'kamada_kawai', '3d_spring')
         """
-        fig, ax = plt.subplots(figsize=self.figsize)
-
-        # 计算布局
-        if layout == "spring":
-            pos = nx.spring_layout(graph, k=0.5, iterations=50)
-        elif layout == "circular":
-            pos = nx.circular_layout(graph)
-        elif layout == "kamada_kawai":
-            pos = nx.kamada_kawai_layout(graph)
-        else:
-            pos = nx.spring_layout(graph)
-
-        # 获取颜色映射
-        unique_communities = len(set(communities.values()))
-        colors = plt.cm.Set3(np.linspace(0, 1, unique_communities))
-        community_colors = {
-            comm: colors[i]
-            for i, comm in enumerate(set(communities.values()))
-        }
-
-        # 节点颜色
-        node_colors = [community_colors[communities[node]] for node in graph.nodes()]
-
-        # 绘制边
-        nx.draw_networkx_edges(
-            graph, pos,
-            alpha=0.2,
-            width=0.5,
-            ax=ax
-        )
-
-        # 绘制节点
-        nx.draw_networkx_nodes(
-            graph, pos,
-            node_color=node_colors,
-            node_size=200,
-            alpha=0.8,
-            ax=ax
-        )
-
-        # 绘制标签
-        nx.draw_networkx_labels(
-            graph, pos,
-            font_size=8,
-            font_weight='bold',
-            ax=ax
-        )
-
-        ax.set_title(title, fontsize=16, fontweight='bold')
-        ax.axis('off')
-
-        plt.tight_layout()
-
-        if output_path:
-            plt.savefig(output_path, dpi=300, bbox_inches='tight')
-            print(f"图表已保存到: {output_path}")
-            plt.close(fig)
+        if layout == "3d_spring":
+            self._visualize_communities_3d(graph, communities, title, output_path)
             return
 
-        plt.show()
+        self._visualize_communities_2d(graph, communities, title, output_path, layout)
 
     def visualize_statistics(
             self,

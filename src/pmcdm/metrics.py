@@ -1,12 +1,41 @@
 """Metrics for PMCDM experiments."""
 
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import networkx as nx
+from sklearn.metrics import normalized_mutual_info_score
+
+from .s_louvain import SLouvain
 
 
-def partition_to_labels(communities: Dict[int, int], nodes: List[int]) -> List[int]:
+def partition_to_labels(communities: Dict[Any, int], nodes: List[Any]) -> List[int]:
     return [communities[n] for n in nodes]
+
+
+def reference_labels_slouvain(layers: List[nx.Graph], random_state: int) -> List[int]:
+    """在原始无隐私扰动的多层网络上运行 S-Louvain，作为无真标签数据集的参考社区划分。"""
+    communities = SLouvain(random_state=random_state).detect([g.copy() for g in layers])
+    nodes = sorted(layers[0].nodes())
+    return partition_to_labels(communities, nodes)
+
+
+def nmi_score(
+    pred: List[int],
+    *,
+    layers: List[nx.Graph],
+    gt_labels: Optional[Dict[Any, int]],
+    random_state: int,
+    slouvain_ref_labels: Optional[List[int]] = None,
+) -> float:
+    """NMI：若有真实标签则与标签比；否则与 S-Louvain 在原始网络上的划分比（可用缓存避免重复跑 S-Louvain）。"""
+    nodes = sorted(layers[0].nodes())
+    if gt_labels is not None:
+        ref = partition_to_labels(gt_labels, nodes)
+    elif slouvain_ref_labels is not None:
+        ref = slouvain_ref_labels
+    else:
+        ref = reference_labels_slouvain(layers, random_state)
+    return float(normalized_mutual_info_score(ref, pred))
 
 
 def communities_to_groups(communities: Dict[int, int]) -> Dict[int, List[int]]:
