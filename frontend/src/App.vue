@@ -401,12 +401,12 @@
             <button :disabled="detecting || !canSubmit" @click="detectCommunities">{{ detecting ? '正在检测...' : '执行社区检测' }}</button>
             <button
               class="secondary"
-              :disabled="visualizing || !canSubmit || !hasDetectionResult"
-              :title="!hasDetectionResult ? '请先执行社区检测' : ''"
+              :disabled="visualizing || !canSubmit || !canVisualize"
+              :title="!hasDetectionResult ? '请先执行社区检测' : isResultStale ? '参数已变化，请重新检测后再可视化' : ''"
               @click="visualizeResults"
             >{{ visualizing ? '生成图像中...' : '生成可视化' }}</button>
           </div>
-          <p class="action-tip">建议先检测再可视化。</p>
+          <p class="action-tip">{{ isResultStale ? '参数已变更，当前结果可能过期，建议先重新检测。' : '建议先检测再可视化。' }}</p>
 
           <p v-if="error" class="msg error msg--compact">{{ error }}</p>
           <p v-if="success" class="msg success msg--compact">{{ success }}</p>
@@ -448,6 +448,9 @@
 
         <div v-if="resultSummary" class="summary summary--compact">
           <p><strong>摘要</strong> {{ resultSummary.dataset?.summary }}</p>
+        </div>
+        <div v-if="resultSummary && isResultStale" class="msg error msg--compact">
+          当前表单参数已与上次检测结果不一致，表格和图像可能不是最新结果。
         </div>
 
         <div v-if="benchmarkRows.length" class="table-wrap table-wrap--results">
@@ -492,7 +495,6 @@
 
 <script>
 import axios from "axios";
-import Plotly from "plotly.js-dist-min";
 
 export default {
   name: "App",
@@ -570,6 +572,9 @@ export default {
       eaLoading: false,
       eaError: "",
       eaResult: null,
+      lastDetectionSignature: "",
+      plotlyModule: null,
+      plotlyPromise: null,
     };
   },
   watch: {
@@ -584,6 +589,18 @@ export default {
         }
       }
     },
+    form: {
+      deep: true,
+      handler() {
+        this.persistState();
+      },
+    },
+    eaForm: {
+      deep: true,
+      handler() {
+        this.persistState();
+      },
+    },
   },
   computed: {
     canSubmit() {
@@ -593,6 +610,16 @@ export default {
     },
     hasDetectionResult() {
       return this.detectionResults != null;
+    },
+    canVisualize() {
+      return this.hasDetectionResult && !this.isResultStale;
+    },
+    isResultStale() {
+      if (!this.hasDetectionResult || !this.lastDetectionSignature) return false;
+      return this.currentDetectionSignature !== this.lastDetectionSignature;
+    },
+    currentDetectionSignature() {
+      return this.buildDetectionSignature();
     },
     detectionSteps() {
       const steps = [];
@@ -646,6 +673,94 @@ export default {
     },
   },
   methods: {
+    async getPlotly() {
+      if (this.plotlyModule) return this.plotlyModule;
+      if (!this.plotlyPromise) {
+        this.plotlyPromise = import("plotly.js-dist-min").then((mod) => {
+          this.plotlyModule = mod.default || mod;
+          return this.plotlyModule;
+        });
+      }
+      return this.plotlyPromise;
+    },
+    persistState() {
+      try {
+        const payload = {
+          form: {
+            ...this.form,
+            layout: this.form.layout,
+          },
+          eaForm: { ...this.eaForm },
+        };
+        window.localStorage.setItem("privacy-community-ui-state", JSON.stringify(payload));
+      } catch (err) {
+        // ignore storage failures
+      }
+    },
+    restoreState() {
+      try {
+        const raw = window.localStorage.getItem("privacy-community-ui-state");
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed?.form && typeof parsed.form === "object") {
+          Object.assign(this.form, parsed.form);
+        }
+        if (parsed?.eaForm && typeof parsed.eaForm === "object") {
+          Object.assign(this.eaForm, parsed.eaForm);
+        }
+      } catch (err) {
+        // ignore corrupted local state
+      }
+    },
+    buildDetectionSignature() {
+      const form = this.form || {};
+      const payload = {
+        source_type: form.source_type,
+        dataset_name: form.dataset_name,
+        algorithm: form.algorithm,
+        epsilon: Number(form.epsilon),
+        delta: Number(form.delta),
+        key_size: Number(form.key_size),
+        random_state: Number(form.random_state),
+        lambd: Number(form.lambd),
+        include_benchmark: Boolean(form.include_benchmark),
+        biogrid_member: form.biogrid_member,
+        biogrid_top_layers: Number(form.biogrid_top_layers),
+        biogrid_min_edges: Number(form.biogrid_min_edges),
+        biogrid_max_nodes: Number(form.biogrid_max_nodes),
+        biogrid_include_genetic: Boolean(form.biogrid_include_genetic),
+        biogrid_auto_layers: Boolean(form.biogrid_auto_layers),
+        lfr_preset: form.lfr_preset,
+        lfr_custom_enabled: Boolean(form.lfr_custom_enabled),
+        lfr_n: Number(form.lfr_n),
+        lfr_tau1: Number(form.lfr_tau1),
+        lfr_tau2: Number(form.lfr_tau2),
+        lfr_mu: Number(form.lfr_mu),
+        lfr_average_degree: Number(form.lfr_average_degree),
+        lfr_max_degree: Number(form.lfr_max_degree),
+        lfr_min_community: Number(form.lfr_min_community),
+        lfr_max_community: Number(form.lfr_max_community),
+        lfr_max_iters: Number(form.lfr_max_iters),
+        lfr_multiplex_layers: Number(form.lfr_multiplex_layers),
+        mlfr_network_type: form.mlfr_network_type,
+        mlfr_n: Number(form.mlfr_n),
+        mlfr_avg: Number(form.mlfr_avg),
+        mlfr_max: Number(form.mlfr_max),
+        mlfr_mix: Number(form.mlfr_mix),
+        mlfr_tau1: Number(form.mlfr_tau1),
+        mlfr_tau2: Number(form.mlfr_tau2),
+        mlfr_mincom: Number(form.mlfr_mincom),
+        mlfr_maxcom: Number(form.mlfr_maxcom),
+        mlfr_l: Number(form.mlfr_l),
+        mlfr_dc: Number(form.mlfr_dc),
+        mlfr_rc: Number(form.mlfr_rc),
+        mlfr_mparam1: Number(form.mlfr_mparam1),
+        mlfr_on: Number(form.mlfr_on),
+        mlfr_om: Number(form.mlfr_om),
+        uploaded_name: this.form.source_type === "upload" ? (this.uploadedFile?.name || "") : "",
+      };
+      return JSON.stringify(payload);
+    },
     async loadCatalog() {
       try {
         const response = await axios.get(`${this.apiBase}/datasets`);
@@ -664,6 +779,7 @@ export default {
             this.form.lfr_preset = this.catalog.lfr_presets[0].id;
           }
         }
+        this.persistState();
       } catch (err) {
         this.error = "无法读取后端数据目录，请先启动 FastAPI 服务。";
       }
@@ -672,6 +788,7 @@ export default {
       this.uploadedFile = event.target.files[0] || null;
       this.error = "";
       this.success = this.uploadedFile ? "文件已载入，准备开始实验。" : "";
+      this.persistState();
     },
     formatMetric(value) {
       if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
@@ -714,6 +831,7 @@ export default {
       const el = this.$refs.eaChart;
       const history = this.eaResult?.history;
       if (!el || !history?.length) return;
+      this.getPlotly().then((Plotly) => {
       const gen = history.map((row) => row.generation);
       const best = history.map((row) => row.best_fitness);
       const mean = history.map((row) => row.mean_fitness);
@@ -751,6 +869,7 @@ export default {
         },
         { responsive: true, displaylogo: false }
       );
+      });
     },
     async runEaOptimize(opts = {}) {
       const population_size = opts.population_size ?? this.eaForm.population_size;
@@ -763,6 +882,7 @@ export default {
 
       if (this.$refs.eaChart) {
         try {
+          const Plotly = await this.getPlotly();
           Plotly.purge(this.$refs.eaChart);
         } catch (e) {
           /* noop */
@@ -857,7 +977,7 @@ export default {
         this.visualizationImage = null;
       }
       this.interactive3dData = null;
-      if (this.$refs.plot3d) Plotly.purge(this.$refs.plot3d);
+      if (this.$refs.plot3d && this.plotlyModule) this.plotlyModule.purge(this.$refs.plot3d);
     },
     buildFormData() {
       const formData = new FormData();
@@ -908,6 +1028,7 @@ export default {
           timeout: 3600000,
         });
         this.detectionResults = response.data;
+        this.lastDetectionSignature = this.buildDetectionSignature();
         let msg = "社区检测完成。";
         if (this.form.auto_ea_before_detect && this.form.source_type === "builtin" && this.eaResult?.best?.params) {
           msg += " 已按检测前遗传优化得到的 ε、λ 运行。";
@@ -924,8 +1045,9 @@ export default {
         this.detecting = false;
       }
     },
-    renderInteractive3D() {
+    async renderInteractive3D() {
       if (!this.interactive3dData || !this.$refs.plot3d) return;
+      const Plotly = await this.getPlotly();
       const plot = this.interactive3dData.plot || {};
       if (plot.mode === "multilayer") {
         const nodes = plot.nodes || [];
@@ -1140,6 +1262,10 @@ export default {
         this.error = "请先执行社区检测，再生成可视化。";
         return;
       }
+      if (this.isResultStale) {
+        this.error = "当前结果已过期，请先重新执行社区检测。";
+        return;
+      }
       this.visualizing = true;
       this.error = "";
       this.success = "";
@@ -1163,6 +1289,7 @@ export default {
     },
   },
   mounted() {
+    this.restoreState();
     this.loadCatalog();
   },
 };

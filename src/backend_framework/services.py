@@ -100,6 +100,9 @@ def _aggregate_layers(layers: List[nx.Graph]) -> nx.Graph:
 class LocalMultilayerSystemService:
     """Local service responsible for datasets, aggregation and visualization."""
 
+    def __init__(self) -> None:
+        self._builtin_bundle_cache: Dict[str, Dict[str, Any]] = {}
+
     @staticmethod
     def graph_statistics(graph: nx.Graph) -> Dict[str, Any]:
         if graph.number_of_nodes() == 0:
@@ -202,15 +205,33 @@ class LocalMultilayerSystemService:
                     os.unlink(temp_path)
 
         try:
-            bundle = load_dataset(dataset_name, variant=variant)
+            cache_key = json.dumps(
+                {
+                    "dataset_name": dataset_name,
+                    "variant": variant,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                default=str,
+            )
+            bundle = self._builtin_bundle_cache.get(cache_key)
+            if bundle is None:
+                loaded = load_dataset(dataset_name, variant=variant)
+                bundle = {
+                    "name": loaded.name,
+                    "layers": loaded.layers,
+                    "ground_truth": loaded.ground_truth,
+                    "summary": loaded.summary,
+                }
+                self._builtin_bundle_cache[cache_key] = bundle
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         return {
-            "name": bundle.name,
-            "layers": bundle.layers,
-            "ground_truth": bundle.ground_truth,
-            "summary": bundle.summary,
+            "name": bundle["name"],
+            "layers": bundle["layers"],
+            "ground_truth": bundle["ground_truth"],
+            "summary": bundle["summary"],
         }
 
     def bundle_payload(self, bundle: Dict[str, Any]) -> Dict[str, Any]:
@@ -703,7 +724,10 @@ class IntegratedPMCDMBackend:
         benchmark_rows = None
         if include_benchmark:
             benchmark_rows = []
+            benchmark_rows.append(selected_result.copy())
             for algo in ALGORITHMS:
+                if algo == algorithm:
+                    continue
                 _, row = self.run_single_algorithm(
                     layers=bundle["layers"],
                     gt_labels=gt,

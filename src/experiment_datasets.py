@@ -213,11 +213,13 @@ def _validate_lfr_params(params: Dict[str, Any]) -> Dict[str, Any]:
         if md <= 1 or md >= validated["n"]:
             raise ValueError("LFR 参数错误: max_degree 应在 (1, n) 内")
 
+    if params.get("seed") is not None:
+        validated["seed"] = int(params["seed"])
+
     return validated
 
 
 def load_lfr_dataset(variant: Any = None) -> DatasetBundle:
-    seed = 42
     if isinstance(variant, dict):
         params = _validate_lfr_params(variant)
         label = "LFR Custom"
@@ -229,9 +231,11 @@ def load_lfr_dataset(variant: Any = None) -> DatasetBundle:
         params = _validate_lfr_params(preset["params"])
         label = preset["label"]
 
+    seed = int(params.get("seed", 42))
+
     # LFR 在这里先生成单层基准图，再复制成多层并加轻微权重差异。
     multiplex_layers = int(params["multiplex_layers"])
-    nx_kwargs = {k: v for k, v in params.items() if k != "multiplex_layers"}
+    nx_kwargs = {k: v for k, v in params.items() if k not in ("multiplex_layers", "seed")}
     base_graph = nx.generators.community.LFR_benchmark_graph(
         seed=seed,
         **nx_kwargs,

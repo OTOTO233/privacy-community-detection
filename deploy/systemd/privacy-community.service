@@ -1,0 +1,15 @@
+[Unit]
+Description=Privacy Community Detection FastAPI Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/privacy-community-detection
+ExecStart=/opt/privacy-community-detection/.venv/bin/python -m uvicorn src.backend:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

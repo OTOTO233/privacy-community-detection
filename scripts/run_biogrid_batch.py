@@ -31,8 +31,7 @@ def _aggregate_unique_edges(layers) -> int:
     return len(seen)
 
 
-def _default_biogrid_variant(*, max_nodes: int = 500) -> Dict[str, Any]:
-    # max_nodes 可由命令行 --max-nodes 覆盖
+def _biogrid_variant(max_nodes: int) -> Dict[str, Any]:
     return {
         "top_layers": BIOGRID_MAX_LAYERS,
         "min_edges": 12,
@@ -81,10 +80,13 @@ def main() -> None:
     parser.add_argument(
         "--max-nodes",
         type=int,
-        default=500,
-        help="BioGRID 子图最大节点数（默认 500）",
+        default=1000,
+        help="BioGRID 子图最大节点数（默认 1000，须 >=20）",
     )
     args = parser.parse_args()
+    if args.max_nodes < 20:
+        print("max_nodes 须 >= 20", file=sys.stderr)
+        sys.exit(2)
 
     species_list = get_biogrid_species()
     if not species_list:
@@ -102,7 +104,7 @@ def main() -> None:
     else:
         take = species_list[: max(1, args.count)]
 
-    variant_base = _default_biogrid_variant(max_nodes=max(20, args.max_nodes))
+    variant_base = _biogrid_variant(args.max_nodes)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -233,7 +235,7 @@ def main() -> None:
         "",
         f"- 生成时间：{stamp}",
         f"- λ = {args.lambd}，random_state = {args.random_state}",
-        f"- BioGRID 参数：层数上限={BIOGRID_MAX_LAYERS}, min_edges=12, max_nodes={variant_base['max_nodes']}, include_genetic=True, auto_layers=True（member 见下表 CSV）",
+        f"- BioGRID 参数：层数上限={BIOGRID_MAX_LAYERS}, min_edges=12, max_nodes={args.max_nodes}, include_genetic=True, auto_layers=True（member 见下表 CSV）",
         f"- 全量 6 算法逐行结果：**{csv_path.name}**",
         "",
         "## 汇总表（DH-Louvain）",
