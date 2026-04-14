@@ -1,156 +1,104 @@
 # privacy-community-detection
-# 隐私保护的社区检测系统
 
-面向本科毕业设计的复杂网络分析与隐私计算融合项目。
+隐私保护的多层网络社区检测系统，本科毕业设计项目。
 
-本项目聚焦于“在不直接暴露原始网络结构的前提下，完成社区检测任务”这一问题，围绕多层网络场景设计并实现了一个集算法验证、隐私机制模拟、可视化展示和 Web 交互于一体的原型系统。项目既可用于算法实验，也适合作为课程设计或毕业答辩中的系统演示平台。
+项目围绕“在不直接暴露原始网络结构的前提下完成社区检测”这一问题展开，结合多层网络建模、差分隐私、同态加密模拟、遗传算法参数优化和 Web 可视化界面，形成了一套可实验、可演示、可部署的原型系统。
 
-## 一、课题背景
+## 项目特性
 
-在社交网络、通信网络和协作网络中，社区检测能够帮助识别节点之间的潜在组织结构，是复杂网络分析中的核心问题之一。但真实网络数据通常包含大量敏感关系信息，例如好友关系、通信联系和协作连接，若直接在明文图数据上进行社区检测，容易造成隐私泄露。
+- 支持 `Karate / AUCS / LFR / mLFR / BioGRID` 等数据集
+- 支持 `S-Louvain / PD-Louvain / R-Louvain / DP-Louvain / K-Louvain / DH-Louvain` 六种算法变体
+- 提供 `Q / D / NMI / pr` 等评价指标
+- 支持差分隐私拓扑扰动与 Paillier 同态加密模拟
+- 提供遗传算法参数优化模块，用于搜索 `epsilon` 与 `lambda`
+- 提供 `FastAPI + Vue` 前后端可视化系统
+- 已完成云服务器部署验证，支持公网访问
 
-因此，本项目尝试将社区检测算法与隐私保护机制结合，构建一个“终端上传、云端协同、保护隐私、输出社区结构”的完整流程，用于验证隐私保护条件下社区检测的可行性与效果。
+## 系统结构
 
-## 二、项目目标
+项目在逻辑上采用“三层协同”思路：
 
-本项目的目标不是单纯实现一个 Louvain 算法，而是完成一个更接近科研课题原型的系统，具体包括：
+1. 终端侧负责数据上传与加密上传模拟
+2. 云服务器 1 负责差分隐私扰动与加密统计
+3. 云服务器 2 负责社区检测优化与指标输出
 
-1. 实现适用于多层网络的社区检测流程。
-2. 将差分隐私与同态加密机制引入检测流程中。
-3. 建立终端、云服务器 1、云服务器 2 的三方协同架构。
-4. 提供模块度、模块密度、NMI、隐私率等指标用于实验评估。
-5. 提供基于 FastAPI + Vue 的前后端演示界面，支持答辩现场展示。
+物理部署上，当前版本采用单机整合部署：
 
-## 三、系统总体方案
+- `FastAPI + Uvicorn` 提供后端接口
+- `nginx` 负责反向代理与前端静态资源发布
+- `Vue` 前端提供交互式实验页面
 
-项目整体围绕 PMCDM 实验框架展开，核心流程如下：
+## 核心模块
 
-1. 用户上传图数据集。
-2. 系统读取图结构并构造多层网络。
-3. 终端侧对边权进行同态加密模拟。
-4. 云服务器 1 对网络进行差分隐私扰动，并计算加密统计量。
-5. 云服务器 2 在协同条件下执行 DH-Louvain 社区检测。
-6. 系统输出社区划分结果、性能指标以及可视化图像。
+### 1. 社区检测
 
-对应代码实现位于：
+项目核心算法为 `DH-Louvain`，在 Louvain 两阶段贪心优化思想基础上，引入模块密度与多层网络信息，适用于隐私保护条件下的社区检测任务。
 
-- [main.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/main.py)
-- [src/pmcdm/architecture.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/pmcdm/architecture.py)
-- [src/pmcdm/experiment.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/pmcdm/experiment.py)
+相关实现：
+
 - [src/pmcdm/dh_louvain.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/pmcdm/dh_louvain.py)
+- [src/pmcdm/s_louvain.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/pmcdm/s_louvain.py)
+- [src/pmcdm/experiment.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/pmcdm/experiment.py)
 
-## 四、核心模块
+### 2. 隐私保护
 
-### 1. 社区检测模块
+项目结合两类机制：
 
-项目实现了基于多层网络的 `DH-Louvain` 检测流程，算法采用“两阶段贪心优化”思想：
+- 差分隐私：通过带噪边筛选对拓扑进行扰动
+- 同态加密：基于 Paillier 体制模拟密文上传与密文统计
 
-- 阶段一：节点在候选社区之间移动，提升目标函数值。
-- 阶段二：对已有社区进行进一步合并，提升整体划分质量。
+相关实现：
 
-该模块支持在多层图上使用加权模块度密度进行优化，能够较好体现多层网络条件下的社区结构特征。
+- [src/differential_privacy.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/differential_privacy.py)
+- [src/homomorphic_encryption.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/homomorphic_encryption.py)
+- [src/pmcdm/architecture.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/pmcdm/architecture.py)
 
-### 2. 隐私保护模块
+### 3. 遗传算法优化
 
-项目引入两类典型隐私保护技术：
+项目实现了基于遗传算法的参数搜索器，用于自动搜索 `epsilon` 与 `lambda`，提升隐私保护与社区检测性能之间的折中效果。
 
-- 差分隐私：通过扰动图结构，降低敏感边关系被直接恢复的风险。
-- 同态加密：基于 Paillier 密码体制，对边权及统计量进行加密处理，模拟密文计算场景。
+相关实现：
 
-这两种机制分别对应“结构扰动保护”和“数据计算保护”，形成了较完整的隐私保护实验链路。
+- [src/evolutionary_optimizer.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/evolutionary_optimizer.py)
+- [scripts/run_ea_optimization.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/scripts/run_ea_optimization.py)
+- [scripts/run_ea_before_after_compare.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/scripts/run_ea_before_after_compare.py)
 
-### 3. 实验评估模块
+### 4. Web 系统
 
-为了体现课题研究属性，项目实现了多种评价指标：
+后端提供统一的实验接口，前端提供三栏式实验页面，可完成：
 
-- `Q`：模块度，用于衡量社区划分质量。
-- `D`：模块密度，用于衡量社区内部连接紧密程度。
-- `NMI`：归一化互信息，用于评价与真实标签的接近程度。
-- `pr`：隐私率，用于描述隐私保护效果。
+- 选择内置数据集或上传图文件
+- 动态配置 `LFR / mLFR / BioGRID` 参数
+- 执行单算法检测与全算法对比
+- 查看指标表格
+- 生成静态图与 3D 交互可视化
+- 运行遗传算法自动调参
 
-此外，系统还支持多分辨率实验，可观察不同 `lambda` 参数下的社区划分变化。
+相关实现：
 
-### 4. Web 展示模块
+- [src/backend_framework/routers.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/backend_framework/routers.py)
+- [src/backend_framework/services.py](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/src/backend_framework/services.py)
+- [frontend/src/App.vue](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/frontend/src/App.vue)
 
-项目提供简洁的前后端演示系统，支持：
-
-- 选择 `Karate / AUCS / LFR / mLFR / BioGRID` 内置数据集，或上传 `txt / csv / npy / npz` 图数据；
-- 设置隐私预算、失败概率、随机种子、算法、`lambda` 与布局方式；
-- 为 `LFR / mLFR / BioGRID` 动态填写数据集参数；
-- 执行社区检测；
-- 展示图统计信息、层信息、社区数量和指标结果；
-- 生成社区可视化图像。
-
-这一部分适合答辩时进行现场演示。
-
-## 五、项目创新点
-
-相较于传统社区检测课程作业，本项目更强调“算法 + 架构 + 隐私机制 + 展示系统”的综合设计，主要体现在以下方面：
-
-1. 将多层网络社区检测与隐私保护机制结合，而非单一算法复现。
-2. 通过终端、云 1、云 2 的三方架构，体现隐私计算场景建模能力。
-3. 不仅给出检测结果，还建立了较完整的指标评估体系。
-4. 在实验脚本之外补充了 Web 化展示界面，更适合毕业答辩演示。
-
-## 六、技术栈
-
-### 后端与算法
-
-- Python 3.9+
-- NetworkX
-- NumPy / Pandas / SciPy
-- scikit-learn
-- FastAPI
-- Uvicorn
-
-### 隐私计算
-
-- diffprivlib
-- python-paillier
-
-### 前端展示
-
-- Vue 3
-- Axios
-- 原生 HTML / CSS
-
-## 七、项目结构
+## 目录结构
 
 ```text
 privacy-community-detection/
-├── data/
-│   ├── raw/                      # 原始公开数据，如 AUCS 原始 mpx 文件
-│   ├── processed/                # 处理后的真实数据集边表
-│   └── generated/                # LFR / mLFR 等生成型数据缓存
-├── tools/                        # mLFR 相关第三方工具目录骨架与桥接位置
-├── scripts/                      # 数据转换和单独实验辅助脚本
-├── src/
-│   ├── backend.py                # FastAPI 后端接口
-│   ├── data_processor.py         # 图数据读取与统计
-│   ├── differential_privacy.py   # 差分隐私机制
-│   ├── homomorphic_encryption.py # 同态加密机制
-│   ├── visualization.py          # 可视化绘图
-│   └── pmcdm/
-│       ├── architecture.py       # 终端/云1/云2 架构模拟
-│       ├── dh_louvain.py         # DH-Louvain 算法
-│       ├── experiment.py         # 实验流程封装
-│       └── metrics.py            # 评价指标计算
-├── frontend/
-│   └── index.html                # 答辩演示页面
+├── data/                         # 原始、处理后和生成型数据
+├── deploy/                       # nginx、systemd 与云端部署脚本
+├── frontend/                     # Vue 前端
+├── output/                       # 实验结果、图表、论文导出文件
+├── scripts/                      # 辅助实验与论文生成脚本
+├── src/                          # 核心算法、后端与可视化实现
+├── tests/                        # 测试代码
+├── tools/                        # 相关工具与桥接目录
 ├── main.py                       # 控制台实验入口
-├── requirements.txt              # 项目依赖
-└── README.md                     # 项目说明文档
+├── requirements.txt              # Python 依赖
+├── DEPLOYMENT.md                 # 云服务器部署说明
+└── README.md
 ```
 
-其中：
-
-- `data/raw/aucs.mpx` 已提交，可直接重新生成 AUCS 处理后文件；
-- `data/processed/aucs/` 已提交，可直接运行 AUCS 实验；
-- `scripts/convert_aucs.py` 用于重新转换 AUCS；
-- `scripts/run_aucs_experiment.py` 用于单独运行 AUCS；
-- `tools/` 当前提交的是目录骨架和说明文件，用于固定 mLFR 相关工具路径。
-
-## 八、运行方式
+## 本地运行
 
 ### 1. 安装依赖
 
@@ -158,75 +106,103 @@ privacy-community-detection/
 pip install -r requirements.txt
 ```
 
-### 2. 运行实验脚本
+### 2. 运行控制台实验
 
 ```bash
 python main.py
 ```
 
-该命令启动后会先询问实验数据集，目前支持 `Karate Club`、`AUCS`、`LFR Benchmark`、`mLFR Benchmark` 和 `BioGRID`。若选择 `LFR`，还可以继续选择“预设参数”或“手填参数”；若选择 `mLFR`，可以手填 `network_type / n / avg / max / mix / tau1 / tau2 / mincom / maxcom / l / dc / rc / mparam1 / on / om`；若选择 `BioGRID`，可以选择物种预设，并设置按 `Experimental System` 构造的层数、最小边数阈值以及 `max_nodes` 子图规模，随后输出不同算法下的 `Q / D / NMI / pr` 指标结果。
-
-### 3. 启动后端服务
+### 3. 启动后端
 
 ```bash
 python -m uvicorn src.backend:app --reload --host 0.0.0.0 --port 8000
 ```
 
-后端现在包含：
+启动后可访问：
 
-- `GET /datasets`：返回内置数据集、算法列表、LFR 预设和 BioGRID 物种目录；
-- `POST /detect`：支持“内置数据集”或“上传文件”两种模式；
-- `POST /visualize`：根据当前参数生成社区结构图像。
+- `GET /datasets`
+- `POST /detect`
+- `POST /visualize`
+- `POST /visualize3d`
+- `POST /optimize/ea`
+- `GET /docs`
 
-### 4. 打开前端页面
+### 4. 启动前端
 
-启动后端后，直接在浏览器中打开：
-
-```text
-frontend/index.html
+```bash
+cd frontend
+npm install
+npm run serve
 ```
 
-前端页面已支持：
+开发模式下默认访问：
 
-- 切换“内置数据集 / 上传文件”；
-- 按数据集类型动态展示 `LFR / mLFR / BioGRID` 参数；
-- 选择具体算法并查看单算法结果；
-- 可选返回全算法对比表；
-- 生成当前配置对应的可视化图像。
+```text
+http://127.0.0.1:8080
+```
 
-## 九、答辩演示建议
+## 云服务器部署
 
-答辩现场可按以下顺序展示项目：
+项目已经完成腾讯云 Ubuntu 服务器部署验证，当前推荐部署形态为：
 
-1. 介绍课题背景与研究意义。
-2. 说明系统总体架构及三方协同流程。
-3. 展示算法模块和隐私保护模块。
-4. 运行 `main.py` 展示实验指标输出。
-5. 启动前后端，上传示例数据并演示检测与可视化过程。
-6. 总结项目创新点、实验效果与可改进方向。
+- 系统镜像：`Ubuntu 22.04 LTS`
+- 运行方式：`Uvicorn + systemd + nginx`
+- 前端：`Vue build 后静态发布`
 
-## 十、后续可改进方向
+部署相关文件：
 
-目前项目已具备原型系统和答辩展示价值，后续仍可进一步增强：
+- [DEPLOYMENT.md](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/DEPLOYMENT.md)
+- [deploy/bootstrap_ubuntu.sh](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/deploy/bootstrap_ubuntu.sh)
+- [deploy/systemd/privacy-community.service](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/deploy/systemd/privacy-community.service)
+- [deploy/nginx/privacy-community.conf](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/deploy/nginx/privacy-community.conf)
 
-1. 引入真实公开网络数据集开展更系统的对比实验。
-2. 优化前后端联动细节，使指标展示更加完整。
-3. 增加实验结果持久化与图表分析能力。
-4. 将算法性能优化到更大规模图数据场景。
-5. 增加论文所需的流程图、时序图和实验报告自动导出能力。
+如果项目代码已经上传到服务器，可直接执行：
 
-## 十一、参考文献
+```bash
+sudo bash deploy/bootstrap_ubuntu.sh /opt/privacy-community-detection ubuntu 你的域名或公网IP
+```
 
-1. Blondel, V. D., Guillaume, J. L., Lambiotte, R., and Lefebvre, E. Fast unfolding of communities in large networks.
-2. Dwork, C., and Roth, A. The algorithmic foundations of differential privacy.
-3. Paillier, P. Public-key cryptosystems based on composite degree residuosity classes.
+## 数据与实验
 
-## 十二、作者信息
+当前项目支持以下典型实验：
 
-- 作者：OTOTO233
-- 项目类型：本科毕业设计原型系统
-- 许可证：MIT License
+- `Karate / AUCS` 基准对比实验
+- `BioGRID` 真实生物网络实验
+- `LFR` 参数控制实验
+- `BioGRID` 迭代次数实验
+- 遗传算法优化前后对比实验
 
----
+实验输出通常位于：
 
-最后更新：2026-04-07
+- `output/*.csv`
+- `output/*.png`
+- `output/*.md`
+- `output/*.docx`
+
+## 当前成果
+
+截至当前版本，项目已经完成：
+
+- 算法实现与多算法基线对比
+- 前后端可视化系统开发
+- 实验图表与论文生成辅助脚本
+- 系统运行截图采集
+- 云端部署验证
+- 论文正文、图表、参考文献与格式对齐稿整理
+
+## 后续可扩展方向
+
+- 引入差分进化等更多参数优化算法
+- 增强大规模图上的性能优化
+- 增加结果缓存与任务队列
+- 增加 HTTPS 与域名部署说明
+- 增加更多真实网络数据集与对比实验
+
+## 参考说明
+
+项目用于毕业设计、课程展示和隐私保护社区检测实验验证。若你需要继续扩展部署、实验或论文输出，优先查看：
+
+- [README.md](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/README.md)
+- [DEPLOYMENT.md](/E:/360MoveData/Users/17598/Desktop/111/毕设/privacy-community-detection/DEPLOYMENT.md)
+
+最后更新：2026-04-14
