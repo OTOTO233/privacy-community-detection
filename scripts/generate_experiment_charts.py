@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 
 import matplotlib
 
@@ -11,12 +12,29 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 OUTPUT = ROOT / "output"
 MU_CSV = OUTPUT / "lfr_experiment_mu_n300_all_complete.csv"
 LAMBDA_CSV = OUTPUT / "lfr_experiment_lambda_n300_all_complete.csv"
+from scripts.chart_style import SONGTI_SMALL_FIVE_PT, apply_songti_small5
 
+
+LABEL_Q = r"$Q$"
+LABEL_D = r"$D$"
+LABEL_NMI = r"$NMI$"
+LABEL_MU = r"$\mu$"
+LABEL_LAMBDA = r"$\lambda$"
+LABEL_PR = r"$p_r$"
 
 ALGORITHMS = ["S-Louvain", "PD-Louvain", "R-Louvain", "DP-Louvain", "K-Louvain", "DH-Louvain"]
+ALGORITHM_LABELS = {
+    "S-Louvain": "标准方法",
+    "PD-Louvain": "加密方法",
+    "R-Louvain": "随机扰动方法",
+    "DP-Louvain": "差分隐私方法",
+    "K-Louvain": "度匿名方法",
+    "DH-Louvain": "双隐私方法",
+}
 
 KARATE = {
     "Q": [0.4245, 0.4254, 0.3701, 0.3909, 0.3060, 0.3611],
@@ -34,13 +52,13 @@ AUCS = {
 KARATE_D = [0.2550, 0.2566, 0.1578, 0.1872, 0.0378, 0.1829]
 
 BIOGRID_SPECIES = [
-    "Gallus",
-    "Bos",
-    "Candida",
-    "Xenopus",
+    "原鸡",
+    "牛",
+    "白色念珠菌",
+    "非洲爪蟾",
     "HIV-1",
-    "Rattus",
-    "C.elegans",
+    "大鼠",
+    "秀丽隐杆线虫",
 ]
 BIOGRID_Q = [0.2145, 0.0000, 0.3621, 0.3286, 0.2137, 0.2057, 0.5205]
 BIOGRID_NMI = [0.6213, 0.7739, 0.5641, 0.7088, 0.5130, 0.3845, 0.6381]
@@ -51,6 +69,7 @@ LAMBDA_Y = [0.2094, 0.2853, 0.3612, 0.4371]
 
 
 def _save_line_chart(path: Path, title: str, xlabel: str, ylabel: str) -> None:
+    apply_songti_small5()
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -61,53 +80,57 @@ def _save_line_chart(path: Path, title: str, xlabel: str, ylabel: str) -> None:
 
 
 def metric_compare_chart(metric: str, ylabel: str, filename: str) -> None:
+    apply_songti_small5()
     plt.figure(figsize=(10, 5))
-    plt.plot(ALGORITHMS, KARATE[metric], marker="o", linewidth=2.2, label="Karate")
+    plt.plot(ALGORITHMS, KARATE[metric], marker="o", linewidth=2.2, label="空手道俱乐部")
     plt.plot(ALGORITHMS, AUCS[metric], marker="s", linewidth=2.2, label="AUCS")
     plt.legend()
-    _save_line_chart(OUTPUT / filename, f"{metric} Across Algorithms", "Algorithm", ylabel)
+    _save_line_chart(OUTPUT / filename, f"不同算法的 {ylabel} 对比", "算法", ylabel)
 
 
 def biogrid_chart() -> None:
+    apply_songti_small5()
     plt.figure(figsize=(11, 5.5))
-    plt.plot(BIOGRID_SPECIES, BIOGRID_Q, marker="o", linewidth=2.0, label="Q")
-    plt.plot(BIOGRID_SPECIES, BIOGRID_NMI, marker="s", linewidth=2.0, label="NMI")
-    plt.plot(BIOGRID_SPECIES, BIOGRID_PR, marker="^", linewidth=2.0, label="pr")
+    plt.plot(BIOGRID_SPECIES, BIOGRID_Q, marker="o", linewidth=2.4, label=f"模块度 {LABEL_Q}")
+    plt.plot(BIOGRID_SPECIES, BIOGRID_NMI, marker="s", linewidth=2.4, label=f"归一化互信息 {LABEL_NMI}")
+    plt.plot(BIOGRID_SPECIES, BIOGRID_PR, marker="^", linewidth=2.4, label=f"隐私率 {LABEL_PR}")
     plt.legend()
     _save_line_chart(
         OUTPUT / "chart_biogrid_dh_species_lines.png",
-        "DH-Louvain Metrics on BioGRID Species",
-        "Species",
-        "Metric Value",
+        "双隐私方法在真实生物互作网络上的指标对比",
+        "网络名称",
+        "指标值",
     )
 
 
 def lambda_chart() -> None:
+    apply_songti_small5()
     plt.figure(figsize=(8, 4.8))
     plt.plot(LAMBDA_X, LAMBDA_Y, marker="o", linewidth=2.4, color="#2c7fb8")
     _save_line_chart(
         OUTPUT / "chart_aucs_lambda_multiresolution.png",
         "AUCS Multiresolution Trend",
-        "Lambda",
-        "Weighted Modularity Density",
+        LABEL_LAMBDA,
+        f"Weighted Modularity Density {LABEL_D}",
     )
 
 
 def ea_history_chart() -> None:
+    apply_songti_small5()
     path = OUTPUT / "ea_optimize_20260412_155834.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     xs = [item["generation"] for item in data["history"]]
     best = [item["best_fitness"] for item in data["history"]]
     mean = [item["mean_fitness"] for item in data["history"]]
     plt.figure(figsize=(8, 4.8))
-    plt.plot(xs, best, marker="o", linewidth=2.2, label="Best Fitness")
-    plt.plot(xs, mean, marker="s", linewidth=2.2, label="Mean Fitness")
+    plt.plot(xs, best, marker="o", linewidth=2.4, label="最优适应度")
+    plt.plot(xs, mean, marker="s", linewidth=2.4, label="平均适应度")
     plt.legend()
     _save_line_chart(
         OUTPUT / "chart_ea_fitness_history.png",
-        "Evolutionary Optimization History",
-        "Generation",
-        "Fitness",
+        "遗传算法参数优化过程",
+        "进化代数",
+        "适应度",
     )
 
 
@@ -136,14 +159,16 @@ def conclusion_ranking_chart() -> None:
     df["privacy_rank"] = df[[f"rank_{c}" for c in privacy_cols]].mean(axis=1)
     df = df.sort_values("community_rank")
 
+    apply_songti_small5()
     plt.figure(figsize=(10.5, 4.8))
     xs = range(len(df))
     width = 0.36
-    plt.bar([x - width / 2 for x in xs], df["community_rank"], width=width, label="Community Detection Rank")
-    plt.bar([x + width / 2 for x in xs], df["privacy_rank"], width=width, label="Privacy Protection Rank")
-    plt.xticks(list(xs), df["algorithm"], rotation=0)
-    plt.ylabel("Average Rank (Lower is Better)")
-    plt.title("Overall Ranking Across Benchmark Metrics")
+    labels = [ALGORITHM_LABELS.get(algo, algo) for algo in df["algorithm"]]
+    plt.bar([x - width / 2 for x in xs], df["community_rank"], width=width, label="检测能力排名")
+    plt.bar([x + width / 2 for x in xs], df["privacy_rank"], width=width, label="隐私保护排名")
+    plt.xticks(list(xs), labels, rotation=0)
+    plt.ylabel("平均排名（越小越好）")
+    plt.title("各算法检测能力与隐私保护综合排名")
     plt.grid(True, axis="y", linestyle="--", alpha=0.35)
     plt.legend()
     plt.tight_layout()
@@ -152,6 +177,7 @@ def conclusion_ranking_chart() -> None:
 
 
 def _plot_lfr(df: pd.DataFrame, x_key: str, y_key: str, filename: str, title: str, xlabel: str, ylabel: str) -> None:
+    apply_songti_small5()
     plt.figure(figsize=(10.5, 5.6))
     for algo in ALGORITHMS:
         series = (
@@ -162,8 +188,10 @@ def _plot_lfr(df: pd.DataFrame, x_key: str, y_key: str, filename: str, title: st
         )
         if series.empty:
             continue
-        plt.plot(series[x_key], series[y_key], marker="o", linewidth=2.0, label=algo)
-    plt.legend(ncol=3, fontsize=8)
+        plt.plot(series[x_key], series[y_key], marker="o", linewidth=2.4, label=ALGORITHM_LABELS.get(algo, algo))
+    plt.legend(ncol=3, fontsize=SONGTI_SMALL_FIVE_PT)
+    if filename == "chart_lfr_mu_group_density_n300_all.png":
+        plt.ylim(top=0.5)
     _save_line_chart(OUTPUT / filename, title, xlabel, ylabel)
 
 
@@ -175,27 +203,27 @@ def lfr_parameter_charts() -> None:
             "mu",
             "module_density",
             "chart_lfr_mu_group_density_n300_all.png",
-            "LFR N=300: D vs μ",
-            "Mixing Parameter μ",
-            "Module Density D",
+            f"基准网络参数控制实验中模块密度随 {LABEL_MU} 变化",
+            f"混合参数 {LABEL_MU}",
+            f"模块密度 {LABEL_D}",
         )
         _plot_lfr(
             mu_df,
             "mu",
             "modularity",
             "chart_lfr_mu_group_modularity_n300_all.png",
-            "LFR N=300: Q vs μ",
-            "Mixing Parameter μ",
-            "Modularity Q",
+            f"基准网络参数控制实验中模块度随 {LABEL_MU} 变化",
+            f"混合参数 {LABEL_MU}",
+            f"模块度 {LABEL_Q}",
         )
         _plot_lfr(
             mu_df,
             "mu",
             "nmi",
             "chart_lfr_mu_group_nmi_n300_all.png",
-            "LFR N=300: NMI vs μ",
-            "Mixing Parameter μ",
-            "NMI",
+            f"基准网络参数控制实验中归一化互信息随 {LABEL_MU} 变化",
+            f"混合参数 {LABEL_MU}",
+            f"归一化互信息 {LABEL_NMI}",
         )
 
     if LAMBDA_CSV.exists():
@@ -205,44 +233,44 @@ def lfr_parameter_charts() -> None:
             "lambd",
             "module_density",
             "chart_lfr_lambda_group_density_n300_all.png",
-            "LFR N=300: D vs λ",
-            "Lambda λ",
-            "Module Density D",
+            f"LFR N=300: {LABEL_D} vs {LABEL_LAMBDA}",
+            f"Lambda {LABEL_LAMBDA}",
+            f"Module Density {LABEL_D}",
         )
         _plot_lfr(
             lambda_df,
             "lambd",
             "modularity",
             "chart_lfr_lambda_group_modularity_n300_all.png",
-            "LFR N=300: Q vs λ",
-            "Lambda λ",
-            "Modularity Q",
+            f"LFR N=300: {LABEL_Q} vs {LABEL_LAMBDA}",
+            f"Lambda {LABEL_LAMBDA}",
+            f"Modularity {LABEL_Q}",
         )
         _plot_lfr(
             lambda_df,
             "lambd",
             "nmi",
             "chart_lfr_lambda_group_nmi_n300_all.png",
-            "LFR N=300: NMI vs λ",
-            "Lambda λ",
-            "NMI",
+            f"LFR N=300: {LABEL_NMI} vs {LABEL_LAMBDA}",
+            f"Lambda {LABEL_LAMBDA}",
+            LABEL_NMI,
         )
         _plot_lfr(
             lambda_df,
             "lambd",
             "privacy_rate",
             "chart_lfr_lambda_group_privacy_n300_all.png",
-            "LFR N=300: pr vs λ",
-            "Lambda λ",
-            "Privacy Rate pr",
+            f"LFR N=300: {LABEL_PR} vs {LABEL_LAMBDA}",
+            f"Lambda {LABEL_LAMBDA}",
+            f"Privacy Rate {LABEL_PR}",
         )
 
 
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    metric_compare_chart("Q", "Modularity Q", "chart_compare_q_lines.png")
-    metric_compare_chart("NMI", "NMI", "chart_compare_nmi_lines.png")
-    metric_compare_chart("pr", "Privacy Rate pr", "chart_compare_privacy_lines.png")
+    metric_compare_chart("Q", f"Modularity {LABEL_Q}", "chart_compare_q_lines.png")
+    metric_compare_chart("NMI", LABEL_NMI, "chart_compare_nmi_lines.png")
+    metric_compare_chart("pr", f"Privacy Rate {LABEL_PR}", "chart_compare_privacy_lines.png")
     biogrid_chart()
     lambda_chart()
     ea_history_chart()

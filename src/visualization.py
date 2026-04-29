@@ -26,6 +26,9 @@ class Visualizer:
         """
         self.figsize = figsize
         sns.set_style("whitegrid")
+        plt.rcParams["font.family"] = ["SimSun"]
+        plt.rcParams["font.sans-serif"] = ["SimSun"]
+        plt.rcParams["axes.unicode_minus"] = False
 
     def _compute_layout(self, graph: nx.Graph, layout: str) -> Dict:
         if layout == "spring":
@@ -43,6 +46,11 @@ class Visualizer:
         colors = plt.cm.Set3(np.linspace(0, 1, len(unique_ids)))
         return {comm: colors[i] for i, comm in enumerate(unique_ids)}
 
+    def _build_community_markers(self, communities: Dict[int, int]) -> Dict[int, str]:
+        markers = ["o", "s", "^", "D", "v", "P", "X", "*", "<", ">"]
+        unique_ids = sorted(set(communities.values()))
+        return {comm: markers[i % len(markers)] for i, comm in enumerate(unique_ids)}
+
     def _visualize_communities_2d(
             self,
             graph: nx.Graph,
@@ -54,31 +62,35 @@ class Visualizer:
         fig, ax = plt.subplots(figsize=self.figsize)
         pos = self._compute_layout(graph, layout)
         community_colors = self._build_community_colors(communities)
-        node_colors = [community_colors[communities[node]] for node in graph.nodes()]
+        community_markers = self._build_community_markers(communities)
+        community_markers = self._build_community_markers(communities)
 
         nx.draw_networkx_edges(
             graph, pos,
-            alpha=0.2,
-            width=0.5,
+            alpha=0.32,
+            width=1.2,
             ax=ax
         )
 
-        nx.draw_networkx_nodes(
-            graph, pos,
-            node_color=node_colors,
-            node_size=200,
-            alpha=0.8,
-            ax=ax
-        )
+        for community_id in sorted(set(communities.values())):
+            nodes = [node for node in graph.nodes() if communities.get(node) == community_id]
+            if not nodes:
+                continue
+            nx.draw_networkx_nodes(
+                graph, pos,
+                nodelist=nodes,
+                node_color=[community_colors[community_id]],
+                node_shape=community_markers[community_id],
+                node_size=230,
+                alpha=0.88,
+                edgecolors="white",
+                linewidths=0.8,
+                ax=ax,
+                label=f"社区 {community_id}",
+            )
 
-        nx.draw_networkx_labels(
-            graph, pos,
-            font_size=8,
-            font_weight='bold',
-            ax=ax
-        )
-
-        ax.set_title(title, fontsize=16, fontweight='bold')
+        ax.set_title(title, fontsize=18, fontweight='bold')
+        ax.legend(loc="best", frameon=True, fontsize=15)
         ax.axis('off')
         plt.tight_layout()
 
@@ -106,43 +118,33 @@ class Visualizer:
             x_coords = [pos[source][0], pos[target][0]]
             y_coords = [pos[source][1], pos[target][1]]
             z_coords = [pos[source][2], pos[target][2]]
-            ax.plot(x_coords, y_coords, z_coords, color="#7f8c8d", alpha=0.18, linewidth=0.6)
+            ax.plot(x_coords, y_coords, z_coords, color="#7f8c8d", alpha=0.28, linewidth=1.2)
 
-        xs = [pos[node][0] for node in graph.nodes()]
-        ys = [pos[node][1] for node in graph.nodes()]
-        zs = [pos[node][2] for node in graph.nodes()]
-        node_colors = [community_colors[communities[node]] for node in graph.nodes()]
-
-        ax.scatter(
-            xs,
-            ys,
-            zs,
-            c=node_colors,
-            s=70,
-            alpha=0.9,
-            depthshade=True,
-            edgecolors="white",
-            linewidths=0.4,
-        )
-
-        # 3D 视图里给全部节点打标签会非常拥挤，只标记高连接节点提高可读性。
-        top_nodes = sorted(graph.degree, key=lambda item: item[1], reverse=True)[: min(15, graph.number_of_nodes())]
-        for node, _ in top_nodes:
-            ax.text(
-                pos[node][0],
-                pos[node][1],
-                pos[node][2],
-                str(node),
-                fontsize=8,
-                color="#213547",
+        for community_id in sorted(set(communities.values())):
+            nodes = [node for node in graph.nodes() if communities.get(node) == community_id]
+            if not nodes:
+                continue
+            ax.scatter(
+                [pos[node][0] for node in nodes],
+                [pos[node][1] for node in nodes],
+                [pos[node][2] for node in nodes],
+                c=[community_colors[community_id]],
+                marker=community_markers[community_id],
+                s=85,
+                alpha=0.92,
+                depthshade=True,
+                edgecolors="white",
+                linewidths=0.7,
+                label=f"社区 {community_id}",
             )
 
-        ax.set_title(title, fontsize=16, fontweight='bold')
+        ax.set_title(title, fontsize=18, fontweight='bold')
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_zticks([])
         ax.grid(False)
         ax.view_init(elev=22, azim=38)
+        ax.legend(loc="best", frameon=True, fontsize=15)
 
         if output_path:
             plt.savefig(output_path, dpi=300, bbox_inches='tight')

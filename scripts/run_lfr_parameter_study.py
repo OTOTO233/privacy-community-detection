@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.experiment_datasets import load_dataset
 from src.pmcdm import PMCDMExperiment
+from scripts.chart_style import SONGTI_SMALL_FIVE_PT, apply_songti_small5
 
 OUTPUT = ROOT / "output"
 ALGORITHMS = ["S-Louvain", "PD-Louvain", "R-Louvain", "DP-Louvain", "K-Louvain", "DH-Louvain"]
@@ -78,6 +79,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _plot(rows: list[dict[str, Any]], x_key: str, y_key: str, filename: str, title: str, xlabel: str, ylabel: str) -> None:
+    apply_songti_small5()
     plt.figure(figsize=(10.5, 5.6))
     for algo in ALGORITHMS:
         series = [row for row in rows if row["algorithm"] == algo]
@@ -88,7 +90,7 @@ def _plot(rows: list[dict[str, Any]], x_key: str, y_key: str, filename: str, tit
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.grid(True, linestyle="--", alpha=0.35)
-    plt.legend(ncol=3, fontsize=8)
+    plt.legend(ncol=3, fontsize=SONGTI_SMALL_FIVE_PT)
     plt.tight_layout()
     plt.savefig(OUTPUT / filename, dpi=220, bbox_inches="tight")
     plt.close()

@@ -19,6 +19,7 @@ from src.experiment_datasets import load_dataset
 from src.pmcdm import CloudServer1, CloudServer2, TerminalClient
 from src.pmcdm.metrics import communities_to_groups, modularity_density, nmi_score, partition_to_labels, reference_labels_slouvain
 from src.pmcdm.dh_louvain import DHLouvain
+from scripts.chart_style import SONGTI_SMALL_FIVE_PT, apply_songti_small5
 
 OUTPUT = ROOT / "output"
 MU_CSV = OUTPUT / "lfr_experiment_mu_n300_all_complete.csv"
@@ -26,9 +27,7 @@ ITER_CSV = OUTPUT / "biogrid_5_iterations_experiment.csv"
 EA_SUMMARY_CSV = OUTPUT / "ea_before_after_summary.csv"
 EA_JSON = OUTPUT / "ea_optimize_20260412_155834.json"
 
-
-plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "Arial Unicode MS"]
-plt.rcParams["axes.unicode_minus"] = False
+apply_songti_small5()
 
 ALGO_ZH = {
     "S-Louvain": "标准方法",
@@ -67,6 +66,13 @@ BIOGRID_TABLE = pd.DataFrame(
     columns=["物种", "模块度Q", "归一化互信息NMI", "隐私率"],
 )
 
+LABEL_Q = r"$Q$"
+LABEL_D = r"$D$"
+LABEL_NMI = r"$NMI$"
+LABEL_MU = r"$\mu$"
+LABEL_LAMBDA = r"$\lambda$"
+LABEL_PR = r"$p_r$"
+
 KARATE = {
     "Q": [0.4245, 0.4254, 0.3701, 0.3909, 0.3060, 0.3611],
     "D": [0.2550, 0.2566, 0.1578, 0.1872, 0.0378, 0.1829],
@@ -96,6 +102,7 @@ def _aggregate_layers(layers: list[nx.Graph]) -> nx.Graph:
 
 
 def _save(path: Path) -> None:
+    apply_songti_small5()
     plt.tight_layout()
     plt.savefig(path, dpi=240, bbox_inches="tight")
     plt.close()
@@ -103,9 +110,9 @@ def _save(path: Path) -> None:
 
 def generate_biogrid_species_chart() -> None:
     plt.figure(figsize=(11.0, 5.6))
-    plt.plot(BIOGRID_TABLE["物种"], BIOGRID_TABLE["模块度Q"], marker="o", linewidth=2.0, label="模块度Q")
-    plt.plot(BIOGRID_TABLE["物种"], BIOGRID_TABLE["归一化互信息NMI"], marker="s", linewidth=2.0, label="归一化互信息NMI")
-    plt.plot(BIOGRID_TABLE["物种"], BIOGRID_TABLE["隐私率"], marker="^", linewidth=2.0, label="隐私率")
+    plt.plot(BIOGRID_TABLE["物种"], BIOGRID_TABLE["模块度Q"], marker="o", linewidth=2.0, label=f"模块度 {LABEL_Q}")
+    plt.plot(BIOGRID_TABLE["物种"], BIOGRID_TABLE["归一化互信息NMI"], marker="s", linewidth=2.0, label=f"归一化互信息 {LABEL_NMI}")
+    plt.plot(BIOGRID_TABLE["物种"], BIOGRID_TABLE["隐私率"], marker="^", linewidth=2.0, label=f"隐私率 {LABEL_PR}")
     plt.xlabel("物种")
     plt.ylabel("指标值")
     plt.grid(True, linestyle="--", alpha=0.35)
@@ -117,9 +124,9 @@ def generate_iterations_chart() -> None:
     df = pd.read_csv(ITER_CSV)
     fig, axes = plt.subplots(1, 3, figsize=(13.8, 4.2))
     specs = [
-        ("d_over_n", "归一化模块密度 D/n"),
-        ("modularity", "模块度 Q"),
-        ("nmi", "归一化互信息 NMI"),
+        ("d_over_n", rf"归一化模块密度 {LABEL_D}/$n$"),
+        ("modularity", f"模块度 {LABEL_Q}"),
+        ("nmi", f"归一化互信息 {LABEL_NMI}"),
     ]
     colors = ["#d62728", "#1f77b4", "#2ca02c", "#8c564b", "#ff33ff"]
     markers = ["*", "s", "o", "d", "x"]
@@ -139,13 +146,15 @@ def generate_iterations_chart() -> None:
         ax.set_xlabel("迭代次数")
         ax.set_ylabel(ylabel)
         ax.set_xticks(sorted(df["iteration"].unique()))
+        if field == "modularity":
+            ax.set_ylim(top=0.70)
         ax.tick_params(direction="in", length=3)
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
-        ax.legend(loc="best", frameon=True, fancybox=False, edgecolor="black", fontsize=8)
-    axes[0].text(0.5, -0.25, "（a）", transform=axes[0].transAxes, ha="center", va="top")
-    axes[1].text(0.5, -0.25, "（b）", transform=axes[1].transAxes, ha="center", va="top")
-    axes[2].text(0.5, -0.25, "（c）", transform=axes[2].transAxes, ha="center", va="top")
+        ax.legend(loc="best", frameon=True, fancybox=False, edgecolor="black", fontsize=SONGTI_SMALL_FIVE_PT)
+    axes[0].text(0.5, -0.25, "（a）", transform=axes[0].transAxes, ha="center", va="top", fontsize=SONGTI_SMALL_FIVE_PT)
+    axes[1].text(0.5, -0.25, "（b）", transform=axes[1].transAxes, ha="center", va="top", fontsize=SONGTI_SMALL_FIVE_PT)
+    axes[2].text(0.5, -0.25, "（c）", transform=axes[2].transAxes, ha="center", va="top", fontsize=SONGTI_SMALL_FIVE_PT)
     plt.tight_layout(w_pad=2.0)
     plt.savefig(OUTPUT / "chart_biogrid_5_iterations_triptych_cn.png", dpi=240, bbox_inches="tight")
     plt.close()
@@ -154,19 +163,21 @@ def generate_iterations_chart() -> None:
 def generate_lfr_mu_charts() -> None:
     df = pd.read_csv(MU_CSV)
     configs = [
-        ("modularity", "chart_lfr_mu_group_modularity_n300_all_cn.png", "模块度 Q"),
-        ("module_density", "chart_lfr_mu_group_density_n300_all_cn.png", "模块密度 D"),
-        ("nmi", "chart_lfr_mu_group_nmi_n300_all_cn.png", "归一化互信息 NMI"),
+        ("modularity", "chart_lfr_mu_group_modularity_n300_all_cn.png", f"模块度 {LABEL_Q}"),
+        ("module_density", "chart_lfr_mu_group_density_n300_all_cn.png", f"模块密度 {LABEL_D}"),
+        ("nmi", "chart_lfr_mu_group_nmi_n300_all_cn.png", f"归一化互信息 {LABEL_NMI}"),
     ]
     for field, filename, ylabel in configs:
         plt.figure(figsize=(10.5, 5.6))
         for algo in ALGORITHMS:
             subset = df[df["algorithm"] == algo].groupby("mu", as_index=False)[field].mean().sort_values("mu")
             plt.plot(subset["mu"], subset[field], marker="o", linewidth=2.0, label=ALGO_ZH[algo])
-        plt.xlabel("混合参数 μ")
+        plt.xlabel(f"混合参数 {LABEL_MU}")
         plt.ylabel(ylabel)
+        if field == "module_density":
+            plt.ylim(top=0.5)
         plt.grid(True, linestyle="--", alpha=0.35)
-        plt.legend(ncol=3, fontsize=8)
+        plt.legend(ncol=3, fontsize=SONGTI_SMALL_FIVE_PT)
         _save(OUTPUT / filename)
 
 
@@ -191,10 +202,10 @@ def generate_ea_before_after_chart() -> None:
     optimized = df[df["scheme"] == "进化优化参数"].iloc[0]
     metrics = [
         ("mean_fitness", "适应度"),
-        ("mean_modularity", "模块度Q"),
-        ("mean_module_density", "模块密度D"),
-        ("mean_nmi", "归一化互信息NMI"),
-        ("mean_privacy_rate", "隐私率"),
+        ("mean_modularity", f"模块度 {LABEL_Q}"),
+        ("mean_module_density", f"模块密度 {LABEL_D}"),
+        ("mean_nmi", LABEL_NMI),
+        ("mean_privacy_rate", f"隐私率 {LABEL_PR}"),
     ]
     plt.figure(figsize=(9.2, 5.2))
     xs = range(len(metrics))
@@ -272,19 +283,19 @@ def _draw_community_graph(graph: nx.Graph, communities: dict, title: str, path: 
 
 def _draw_multilayer_graph(layers: list[nx.Graph], communities: dict, title: str, path: Path) -> None:
     aggregate = _aggregate_layers(layers)
-    base_pos = nx.spring_layout(aggregate, seed=42, k=0.75, iterations=120)
+    base_pos = nx.spring_layout(aggregate, seed=42, k=1.15, iterations=160)
     unique = sorted(set(communities.values()))
     color_map = {cid: plt.cm.Set3(i / max(1, len(unique) - 1 if len(unique) > 1 else 1)) for i, cid in enumerate(unique)}
     fig = plt.figure(figsize=(11.5, 8.0))
     ax = fig.add_subplot(111, projection="3d")
-    gap = 1.7
+    gap = 1.05
     layer_names = [layer.graph.get("layer", f"层{idx + 1}") for idx, layer in enumerate(layers)]
     for lid, layer in enumerate(layers):
         z = lid * gap
         for u, v in layer.edges():
             x1, y1 = base_pos[u]
             x2, y2 = base_pos[v]
-            ax.plot([x1, x2], [y1, y2], [z, z], color="#8a8a8a", alpha=0.12, linewidth=0.45)
+            ax.plot([x1, x2], [y1, y2], [z, z], color="#8a8a8a", alpha=0.24, linewidth=1.25)
         xs, ys, zs, cs = [], [], [], []
         for node in layer.nodes():
             x, y = base_pos[node]
@@ -292,8 +303,8 @@ def _draw_multilayer_graph(layers: list[nx.Graph], communities: dict, title: str
             ys.append(y)
             zs.append(z)
             cs.append(color_map[communities[node]])
-        ax.scatter(xs, ys, zs, c=cs, s=22, alpha=0.92, depthshade=True, edgecolors="white", linewidths=0.2)
-        ax.text2D(0.02, 0.95 - lid * 0.05, f"第{lid + 1}层：{layer_names[lid]}", transform=ax.transAxes, fontsize=9)
+        ax.scatter(xs, ys, zs, c=cs, s=34, alpha=0.94, depthshade=True, edgecolors="white", linewidths=0.25)
+        ax.text2D(0.02, 0.95 - lid * 0.065, f"第{lid + 1}层：{layer_names[lid]}", transform=ax.transAxes, fontsize=13)
     shared = set(layers[0].nodes())
     for lid in range(1, len(layers)):
         shared &= set(layers[lid].nodes())
@@ -301,8 +312,7 @@ def _draw_multilayer_graph(layers: list[nx.Graph], communities: dict, title: str
     for node in top_nodes:
         x, y = base_pos[node]
         for lid in range(len(layers) - 1):
-            ax.plot([x, x], [y, y], [lid * gap, (lid + 1) * gap], color="#4b6cb7", alpha=0.14, linewidth=0.5)
-    ax.set_title(title)
+            ax.plot([x, x], [y, y], [lid * gap, (lid + 1) * gap], color="#4b6cb7", alpha=0.26, linewidth=1.35)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_zticks([])

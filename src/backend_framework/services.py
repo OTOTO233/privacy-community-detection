@@ -354,10 +354,10 @@ class LocalMultilayerSystemService:
                 "community_ids": [],
             }
 
-        base_positions = nx.spring_layout(aggregate, dim=2, k=0.8, iterations=120, seed=random_state)
+        base_positions = nx.spring_layout(aggregate, dim=2, k=1.15, iterations=160, seed=random_state)
         degrees = dict(aggregate.degree())
         max_degree = max(degrees.values(), default=1)
-        layer_gap = 1.8
+        layer_gap = 1.1
 
         layer_names = [layer.graph.get("layer", f"Layer {index + 1}") for index, layer in enumerate(layers)]
         all_layer_nodes: List[Dict[str, Any]] = []
@@ -381,7 +381,7 @@ class LocalMultilayerSystemService:
                         "z": z_value,
                         "community": int(communities.get(node, -1)),
                         "degree": int(degrees.get(node, 0)),
-                        "size": float(5.0 + 7.0 * degrees.get(node, 0) / max(1, max_degree)),
+                        "size": float(8.0 + 12.0 * degrees.get(node, 0) / max(1, max_degree)),
                     }
                 )
 
