@@ -15,11 +15,16 @@ import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.chart_style import apply_songti_small5
 from src import EvolutionaryOptimizer, EvolutionaryOptimizerConfig
 
 
 OUTPUT = ROOT / "output"
 SEEDS = [11, 17, 23, 29, 31, 37, 41, 43, 47, 53]
+LABEL_Q = r"$Q$"
+LABEL_D = r"$D$"
+LABEL_NMI = r"$NMI$"
+LABEL_PR = r"$p_r$"
 
 
 @dataclass
@@ -85,14 +90,15 @@ def _plot(summary: list[dict[str, float]]) -> None:
     baseline = [item for item in summary if item["scheme"] == "基线参数"][0]
     optimized = [item for item in summary if item["scheme"] == "进化优化参数"][0]
 
+    apply_songti_small5()
     plt.figure(figsize=(9.2, 5.2))
     xs = range(len(metrics))
     width = 0.36
-    plt.bar([x - width / 2 for x in xs], [baseline[f"mean_{m}"] for m in metrics], width=width, label="Baseline")
-    plt.bar([x + width / 2 for x in xs], [optimized[f"mean_{m}"] for m in metrics], width=width, label="Optimized")
-    plt.xticks(list(xs), ["fitness", "Q", "D", "NMI", "pr"])
-    plt.ylabel("Mean Value")
-    plt.title("Evolutionary Optimization Before vs After (10 Trials)")
+    plt.bar([x - width / 2 for x in xs], [baseline[f"mean_{m}"] for m in metrics], width=width, label="基线参数")
+    plt.bar([x + width / 2 for x in xs], [optimized[f"mean_{m}"] for m in metrics], width=width, label="进化优化参数")
+    plt.xticks(list(xs), ["适应度", f"模块度 {LABEL_Q}", f"模块密度 {LABEL_D}", LABEL_NMI, f"隐私率 {LABEL_PR}"])
+    plt.ylabel("平均值")
+    plt.title("进化算法优化前后平均指标对比")
     plt.grid(True, axis="y", linestyle="--", alpha=0.35)
     plt.legend()
     plt.tight_layout()

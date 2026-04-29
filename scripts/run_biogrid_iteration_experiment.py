@@ -19,11 +19,17 @@ from src.experiment_datasets import load_dataset
 from src.pmcdm import CloudServer1, CloudServer2, TerminalClient
 from src.pmcdm.dh_louvain import DHLouvain
 from src.pmcdm.metrics import communities_to_groups, modularity_density, nmi_score, partition_to_labels, reference_labels_slouvain
+from scripts.chart_style import SONGTI_SMALL_FIVE_PT, apply_songti_small5
 
 
 OUTPUT = ROOT / "output"
 OUT_CSV = OUTPUT / "biogrid_5_iterations_experiment.csv"
 OUT_IMG = OUTPUT / "chart_biogrid_5_iterations_triptych.png"
+OUT_SINGLE_IMAGES = {
+    "d_over_n": OUTPUT / "chart_biogrid_5_iterations_d_over_n.png",
+    "modularity": OUTPUT / "chart_biogrid_5_iterations_modularity.png",
+    "nmi": OUTPUT / "chart_biogrid_5_iterations_nmi.png",
+}
 
 ITERATIONS = [1, 2, 3, 4, 5, 6]
 RANDOM_STATE = 42
@@ -40,8 +46,20 @@ NETWORKS = [
     ("MERS", "BIOGRID-ORGANISM-Middle-East_Respiratory_Syndrome-related_Coronavirus-5.0.256.tab3.txt"),
 ]
 
+NETWORK_LABELS_ZH = {
+    "Plasmodium": "恶性疟原虫",
+    "HIV-1": "HIV-1",
+    "E.coli": "大肠杆菌",
+    "Xenopus": "非洲爪蟾",
+    "MERS": "MERS",
+}
+
 COLORS = ["#d62728", "#1f77b4", "#2ca02c", "#8c564b", "#ff33ff"]
 MARKERS = ["*", "s", "o", "d", "x"]
+
+LABEL_Q = r"$Q$"
+LABEL_D = r"$D$"
+LABEL_NMI = r"$NMI$"
 
 
 @dataclass
@@ -138,15 +156,16 @@ def _run_one(bundle, ref_labels: list[int], iteration: int) -> tuple[float, floa
 
 
 def _plot(rows: Iterable[ExperimentRow]) -> None:
+    apply_songti_small5()
     row_list = list(rows)
     if not row_list:
         return
 
     fig, axes = plt.subplots(1, 3, figsize=(13.6, 4.0))
     specs = [
-        ("d_over_n", "Statistical values of D/n", None),
-        ("modularity", "Statistical values of Q", None),
-        ("nmi", "Statistical values of NMI", (0.0, 1.0)),
+        ("d_over_n", rf"Statistical values of {LABEL_D}/$n$", None),
+        ("modularity", rf"Statistical values of {LABEL_Q}", (None, 0.70)),
+        ("nmi", rf"Statistical values of {LABEL_NMI}", (0.0, 1.0)),
     ]
 
     for ax, (field, ylabel, ylim) in zip(axes, specs):
@@ -165,22 +184,56 @@ def _plot(rows: Iterable[ExperimentRow]) -> None:
                 label=label,
             )
         ax.set_xlabel("Number of iterations")
-        ax.set_ylabel(ylabel, fontstyle="italic")
+        ax.set_ylabel(ylabel)
         ax.set_xticks(ITERATIONS)
         if ylim is not None:
             ax.set_ylim(*ylim)
         ax.tick_params(direction="in", length=3)
         for spine in ax.spines.values():
             spine.set_linewidth(1.0)
-        ax.legend(loc="best", frameon=True, fancybox=False, edgecolor="black", fontsize=9)
+        ax.legend(loc="best", frameon=True, fancybox=False, edgecolor="black", fontsize=SONGTI_SMALL_FIVE_PT)
 
-    axes[0].text(0.5, -0.28, "(a)", transform=axes[0].transAxes, ha="center", va="top")
-    axes[1].text(0.5, -0.28, "(b)", transform=axes[1].transAxes, ha="center", va="top")
-    axes[2].text(0.5, -0.28, "(c)", transform=axes[2].transAxes, ha="center", va="top")
+    axes[0].text(0.5, -0.28, "(a)", transform=axes[0].transAxes, ha="center", va="top", fontsize=SONGTI_SMALL_FIVE_PT)
+    axes[1].text(0.5, -0.28, "(b)", transform=axes[1].transAxes, ha="center", va="top", fontsize=SONGTI_SMALL_FIVE_PT)
+    axes[2].text(0.5, -0.28, "(c)", transform=axes[2].transAxes, ha="center", va="top", fontsize=SONGTI_SMALL_FIVE_PT)
 
     plt.tight_layout(w_pad=2.2)
     plt.savefig(OUT_IMG, dpi=240, bbox_inches="tight")
     plt.close()
+
+    single_specs = [
+        ("d_over_n", "真实生物网络迭代实验中归一化模块密度变化", rf"归一化模块密度 {LABEL_D}/$n$", None),
+        ("modularity", "真实生物网络迭代实验中模块度变化", f"模块度 {LABEL_Q}", (None, 0.70)),
+        ("nmi", "真实生物网络迭代实验中归一化互信息变化", f"归一化互信息 {LABEL_NMI}", (0.0, 1.0)),
+    ]
+    for field, title, ylabel, ylim in single_specs:
+        apply_songti_small5()
+        plt.figure(figsize=(10.5, 5.8))
+        for i, (label, _) in enumerate(NETWORKS):
+            series = [row for row in row_list if row.species == label]
+            series.sort(key=lambda item: item.iteration)
+            if not series:
+                continue
+            plt.plot(
+                [row.iteration for row in series],
+                [getattr(row, field) for row in series],
+                color=COLORS[i],
+                marker=MARKERS[i],
+                linewidth=2.4,
+                markersize=7,
+                label=NETWORK_LABELS_ZH.get(label, label),
+            )
+        plt.title(title)
+        plt.xlabel("迭代次数")
+        plt.ylabel(ylabel)
+        plt.xticks(ITERATIONS)
+        if ylim is not None:
+            plt.ylim(*ylim)
+        plt.grid(True, linestyle="--", alpha=0.35)
+        plt.legend(loc="best", frameon=True, fancybox=False, edgecolor="black", fontsize=SONGTI_SMALL_FIVE_PT)
+        plt.tight_layout()
+        plt.savefig(OUT_SINGLE_IMAGES[field], dpi=240, bbox_inches="tight")
+        plt.close()
 
 
 def main() -> None:
